@@ -356,7 +356,7 @@ const loadTitle     = document.getElementById('load-title')!
 const loadTitleInput = (() => {
   const fi = document.createElement('input')
   fi.type    = 'file'
-  fi.accept  = '.js,.mjs,.ttl,.n3,.turtle,.jsonld'
+  fi.accept  = '.js,.mjs,.ttl,.n3,.turtle,.jsonld,.json'
   fi.multiple = true
   fi.style.display = 'none'
   document.body.appendChild(fi)
@@ -393,7 +393,7 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
     return
   }
 
-  if (ext === '.jsonld' || ext === '.json-ld') {
+  if (ext === '.jsonld' || ext === '.json-ld' || ext === '.json') {
     try {
       const cfg = parseRenderConfigJsonLd(JSON.parse(await file.text()))
       if (!cfg) { toast('Not a valid render config JSON-LD', 'error'); return }

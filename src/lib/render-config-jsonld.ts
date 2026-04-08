@@ -112,16 +112,13 @@ export function buildRenderConfigJsonLd(
   })
 
   const context: Record<string, unknown> = {
-    rex:         REX_NS,
+    ...pfxMap,           // user-defined prefixes first (lower priority)
+    rex:         REX_NS,  // always present so typeColor/typeRadius/hullFill terms resolve
     xsd:         XSD_NS,
     typeColor:   'rex:typeColor',
     typeRadius:  { '@id': 'rex:typeRadius', '@type': 'xsd:integer' },
     hullFill:    'rex:hullFill',
-    ...pfxMap,
   }
-  // Remove rex and xsd from pfxMap echo (already declared above)
-  delete (context as Record<string, unknown>)['rex']
-  delete (context as Record<string, unknown>)['xsd']
 
   return { '@context': context, '@graph': graph }
 }

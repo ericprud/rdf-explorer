@@ -7,12 +7,12 @@
  *   # lines starting with # are comments
  *
  * OUTPUT TURTLE:
- *   @prefix foaf: <http://xmlns.com/foaf/0.1/> .
- *   @prefix ex:   <https://example.org/knows#> .
+ *   PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+ *   PREFIX xsd:  <http://www.w3.org/2001/XMLSchema#>
  *
- *   ex:Alice a foaf:Person ; foaf:name "Alice" ; foaf:knows ex:Bob .
- *   ex:Bob   a foaf:Person ; foaf:name "Bob"   ; foaf:knows ex:Carol .
- *   ex:Carol a foaf:Person ; foaf:name "Carol" .
+ *   <#Alice> a foaf:Person ; foaf:name "Alice" ; foaf:knows <#Bob> .
+ *   <#Bob>   a foaf:Person ; foaf:name "Bob"   ; foaf:knows <#Carol> .
+ *   <#Carol> a foaf:Person ; foaf:name "Carol" .
  *
  * Rules:
  *   • Names are capitalised words (first char upper-case A-Z).
@@ -25,8 +25,10 @@ import type { DataLoader, ParseResult, TurtleChangedCallback } from './parser-ap
 import { buildBasePanel } from './base-panel'
 
 const BASE    = 'https://example.org/knows#'
-const FOAF    = 'http://xmlns.com/foaf/0.1/'
-const XSD_STR = 'http://www.w3.org/2001/XMLSchema#string'
+const NS_FOAF = 'http://xmlns.com/foaf/0.1/'
+const NS_RDF  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+const NS_XSD  = 'http://www.w3.org/2001/XMLSchema#'
+const XSD_STR = 'xsd:string'
 
 /** Exported for testing: pure function, no I/O */
 export function parseKnowsDsl(text: string): {
@@ -54,14 +56,14 @@ export function parseKnowsDsl(text: string): {
 
     people.add(subj)
     people.add(obj)
-    triples.push([`${BASE}${subj}`, `${FOAF}knows`, `${BASE}${obj}`])
+    triples.push([`${BASE}${subj}`, `${NS_FOAF}knows`, `${BASE}${obj}`])
   }
 
   // Emit a foaf:Person + foaf:name triple for every person mentioned
   for (const name of people) {
     const iri = `${BASE}${name}`
-    triples.push([iri, `${FOAF}type`,   `${FOAF}Person`])
-    triples.push([iri, `${FOAF}name`,   `"${name}"^^${XSD_STR}`])
+    triples.push([iri, `${NS_RDF}type`,    `${NS_FOAF}Person`])
+    triples.push([iri, `${NS_FOAF}name`,   `"${name}"^^${XSD_STR}`])
   }
 
   return { triples, warnings }
@@ -70,8 +72,9 @@ export function parseKnowsDsl(text: string): {
 /** Serialise triples to Turtle text */
 export function triplesToTurtle(triples: Array<[string, string, string]>, baseIri = BASE): string {
   const lines = [
-    '@prefix foaf: <http://xmlns.com/foaf/0.1/> .',
-    `@prefix ex:   <${BASE}> .`,
+    `@prefix foaf: <${NS_FOAF}> .`,
+    `@prefix xsd:  <${NS_XSD}> .`,
+    `@prefix rdf:  <${NS_RDF}> .`,
     '',
     `@base <${baseIri}> .`,
     '',
@@ -86,8 +89,8 @@ export function triplesToTurtle(triples: Array<[string, string, string]>, baseIr
 
   for (const [subj, pairs] of bySubj) {
     const shorten = (iri: string) =>
-      iri.startsWith(BASE)  ? `ex:${iri.slice(BASE.length)}`  :
-      iri.startsWith(FOAF)  ? `foaf:${iri.slice(FOAF.length)}` :
+      iri.startsWith(BASE)  ? `<#${iri.slice(BASE.length)}>`  :
+      iri.startsWith(NS_FOAF)  ? `foaf:${iri.slice(NS_FOAF.length)}` :
       iri.startsWith('"')   ? iri :
       `<${iri}>`
 
@@ -109,12 +112,21 @@ class KnowsLoader implements DataLoader {
   readonly accepts     = ['.txt', '.knows']
 
   readonly prefixes: Record<string, string> = {
-    ex:   BASE,
-    foaf: FOAF,
+    xsd:  NS_XSD,
+    foaf: NS_FOAF,
+    rdf:  NS_RDF,
   }
 
   readonly typeColors: Record<string, string> = {
     'foaf:Person': '#4f9cf9',
+  }
+
+  readonly typeRadii: Record<string, number> = {
+    'foaf:Person': 10,
+  }
+
+  readonly hullFills: Record<string, string> = {
+    'foaf:Person': 'rgba(79,156,249,0.07)',
   }
 
   private baseIri    = BASE

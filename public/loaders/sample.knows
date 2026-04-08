@@ -1,0 +1,17 @@
+# Sample "knows" DSL file — demonstrates foaf:Person coloring, radii, and hull
+#
+# Load this file via the "Load Title File" button after loading knows-parser.js
+# as a custom loader.  All nodes will appear in blue (#4f9cf9) with radius 10
+# and a light-blue convex hull around the whole group.
+
+Alice knows Bob.
+Alice knows Carol.
+Bob knows Dave.
+Bob knows Eve.
+Carol knows Eve.
+Carol knows Frank.
+Dave knows Grace.
+Eve knows Grace.
+Frank knows Henry.
+Grace knows Henry.
+Henry knows Alice.

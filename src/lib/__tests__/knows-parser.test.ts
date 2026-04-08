@@ -116,7 +116,7 @@ describe('DataLoader interface conformance', () => {
 
   it('parse() returns a valid ParseResult shape', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.').buffer as ArrayBuffer
-    const r = await parser.parse(buf)
+    const r = await parser.parse!(buf)
     expect(typeof r.turtle).toBe('string')
     expect(typeof r.tripleCount).toBe('number')
     expect(typeof r.timestamp).toBe('string')
@@ -127,21 +127,21 @@ describe('DataLoader interface conformance', () => {
 
   it('parse() turtle contains the expected foaf:knows triple', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.').buffer as ArrayBuffer
-    const r = await parser.parse(buf)
+    const r = await parser.parse!(buf)
     expect(r.turtle).toContain('foaf:knows')
     expect(r.tripleCount).toBeGreaterThan(0)
   })
 
   it('parse() warns on bad lines but still returns Turtle', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.\nbad line').buffer as ArrayBuffer
-    const r = await parser.parse(buf)
+    const r = await parser.parse!(buf)
     expect(r.warnings.length).toBeGreaterThan(0)
     expect(r.turtle).toContain('foaf:knows')
   })
 
   it('parse() tripleCount matches actual triples array length', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.\nBob knows Carol.').buffer as ArrayBuffer
-    const r = await parser.parse(buf)
+    const r = await parser.parse!(buf)
     // Count the triples ourselves using parseKnowsDsl
     const text = new TextDecoder().decode(buf)
     const { triples } = parseKnowsDsl(text)

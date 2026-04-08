@@ -108,6 +108,15 @@ class KnowsLoader implements DataLoader {
   readonly description = 'Parses "Alice knows Bob." lines → foaf:knows Turtle'
   readonly accepts     = ['.txt', '.knows']
 
+  readonly prefixes: Record<string, string> = {
+    ex:   BASE,
+    foaf: FOAF,
+  }
+
+  readonly typeColors: Record<string, string> = {
+    'foaf:Person': '#4f9cf9',
+  }
+
   private baseIri    = BASE
   private lastText   = ''
   private onChanged: TurtleChangedCallback = () => { /**/ }

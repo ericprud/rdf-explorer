@@ -367,6 +367,39 @@ html, body {
 #turtle-container { flex: 1; overflow: hidden; position: relative; }
 #turtle-container .cm-editor { height: 100%; }
 
+/* ── Render panel (collapsible, above turtle editor) ────────────────────── */
+.render-panel {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  padding: 8px 12px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.render-swatch-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.render-swatch-row input[type="color"] {
+  width: 22px; height: 22px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.render-btn-row {
+  display: flex;
+  gap: 6px;
+  padding-top: 4px;
+  flex-shrink: 0;
+}
+
 /* ── SPARQL pane ────────────────────────────────────────────────────────── */
 .sparql-pane { display: flex; flex-direction: column; height: 100%; }
 .sparql-editor-wrap { flex-shrink: 0; background: var(--bg-elevated); border-bottom: 1px solid var(--border); }

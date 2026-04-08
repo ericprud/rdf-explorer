@@ -8,6 +8,7 @@
 
 import type { DataLoader, TurtleChangedCallback } from './parser-api'
 import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '../components/graph-view'
+import { resolveTypeKeys }                         from './resolve-type-keys'
 
 export type { TurtleChangedCallback }
 
@@ -41,8 +42,9 @@ export function buildLoaderPanels(
     container.appendChild(wrapper)
     // Delegate all DOM construction (drop-zone, controls) to the loader itself
     loader.buildPanel(wrapper, onTurtleChanged)
-    Object.assign(TYPE_COLORS, loader.typeColors)
-    Object.assign(TYPE_RADII, loader.typeRadii)
-    Object.assign(HULL_FILLS, loader.hullFills)
+    const pfx = loader.prefixes ?? {}
+    if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, pfx))
+    if (loader.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(loader.typeRadii,  pfx))
+    if (loader.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(loader.hullFills,  pfx))
   }
 }

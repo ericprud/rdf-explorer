@@ -23,6 +23,7 @@ function stubLoader(name: string, exts: string[] = ['.stub']): DataLoader {
   return {
     name,
     accepts: exts,
+    buildPanel() { /* no-op in tests */ },
     async parse() {
       return { turtle: '', warnings: [], sheetsSeen: [], tripleCount: 0,
                timestamp: '', fileHash: '' }

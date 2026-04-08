@@ -16,8 +16,10 @@ import './styles/main.css'
 import { parseTurtleToGraph, readHistory, pushHistory } from './lib/graph-store'
 import { buildN3Store, runSparqlSelect }                from './lib/sparql-runner'
 import { generateShEx, EX as EX_ns }                   from './lib/shex-validator'
+import { assignTypeColors }                             from './lib/color-scheme'
+import { buildRenderConfigJsonLd, parseRenderConfigJsonLd } from './lib/render-config-jsonld'
 import { diffTurtle, renderDiffHtml }                  from './lib/diff'
-import { GraphView, TYPE_COLORS }                      from './components/graph-view'
+import { GraphView, TYPE_COLORS, TYPE_RADII, HULL_FILLS } from './components/graph-view'
 import { TurtleEditor }                                from './components/turtle-editor'
 import { ShExEditor }                                  from './components/shex-editor'
 import { ShExWorkerClient }                            from './lib/shex-worker-client'
@@ -173,7 +175,10 @@ document.querySelector('#app')!.innerHTML = `
             <button class="btn sm" id="nd-expand-btn">Expand node</button>
           </div>
         </div>
-        <div class="legend" id="graph-legend"></div>
+        <div class="legend" id="graph-legend">
+          <div id="legend-items"></div>
+          <button class="icon-btn sm" id="btn-legend-download" title="Download rendering config as JSON-LD" style="display:none;margin-top:4px;width:100%;font-size:10px">&#x2B07; JSON-LD</button>
+        </div>
       </div>
 
       <!-- Turtle (editable) -->
@@ -181,7 +186,9 @@ document.querySelector('#app')!.innerHTML = `
         <div class="pane-toolbar flex-row">
           <span class="mono text-xs text-muted grow">Turtle &middot; editable &middot; changes update SPARQL &amp; ShEx</span>
           <button class="btn sm" id="btn-revert-turtle" style="display:none">&#x21BA; Revert</button>
+          <button class="btn sm" id="btn-rendering-toggle" title="Show / hide rendering options">Rendering</button>
         </div>
+        <div class="render-panel" id="render-panel" style="display:none"></div>
         <div id="turtle-container" class="pane-scroll-host"></div>
       </div>
 
@@ -349,7 +356,7 @@ const loadTitle     = document.getElementById('load-title')!
 const loadTitleInput = (() => {
   const fi = document.createElement('input')
   fi.type    = 'file'
-  fi.accept  = '.js,.mjs,.ttl,.n3,.turtle'
+  fi.accept  = '.js,.mjs,.ttl,.n3,.turtle,.jsonld'
   fi.multiple = true
   fi.style.display = 'none'
   document.body.appendChild(fi)
@@ -383,6 +390,21 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
     } finally {
       URL.revokeObjectURL(url)
     }
+    return
+  }
+
+  if (ext === '.jsonld' || ext === '.json-ld') {
+    try {
+      const cfg = parseRenderConfigJsonLd(JSON.parse(await file.text()))
+      if (!cfg) { toast('Not a valid render config JSON-LD', 'error'); return }
+      Object.assign(TYPE_COLORS, cfg.typeColors)
+      Object.assign(TYPE_RADII,  cfg.typeRadii)
+      Object.assign(HULL_FILLS,  cfg.hullFills)
+      buildLegend()
+      if (graphData) graphView?.refreshColors()
+      if (document.getElementById('render-panel')!.style.display !== 'none') buildRenderPanel()
+      toast('Render config applied', 'success')
+    } catch (err) { toastError('Failed to parse JSON-LD', err) }
     return
   }
 
@@ -435,6 +457,7 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
     document.getElementById('btn-revert-turtle')!.style.display = 'none'
     buildNodeList(graphData.nodes)
     buildLegend()
+    if (document.getElementById('render-panel')!.style.display !== 'none') buildRenderPanel()
     document.getElementById('btn-download')!.style.display = ''
 
     if (prevTurtle && prevTurtle !== turtle) {
@@ -734,6 +757,17 @@ document.getElementById('btn-download')!.addEventListener('click', () => {
   })
   a.click(); URL.revokeObjectURL(a.href)
   toast('Turtle downloaded', 'success')
+})
+
+// ── Legend download ──────────────────────────────────────────────────────────
+document.getElementById('btn-legend-download')!.addEventListener('click', downloadRenderConfig)
+
+// ── Rendering panel toggle ────────────────────────────────────────────────────
+document.getElementById('btn-rendering-toggle')!.addEventListener('click', () => {
+  const panel = document.getElementById('render-panel')!
+  const show  = panel.style.display === 'none'
+  if (show) buildRenderPanel()
+  panel.style.display = show ? '' : 'none'
 })
 
 // ── Label mode button ─────────────────────────────────────────────────────────
@@ -1073,9 +1107,88 @@ function buildNodeList(nodes: GraphNode[]): void {
   nf.addEventListener('input', () => render(nf.value))
 }
 function buildLegend(): void {
-  document.getElementById('graph-legend')!.innerHTML = Object.entries(TYPE_COLORS)
+  const types = Object.entries(TYPE_COLORS)
     .filter(([k]) => k !== 'default' && !k.startsWith('rdfs'))
-    .map(([k, color]) => `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div><span>${esc(k.replace('ex:',''))}</span></div>`).join('')
+  document.getElementById('legend-items')!.innerHTML = types
+    .map(([k, color]) => `<div class="legend-item"><div class="legend-dot" style="background:${color}"></div><span>${esc(labelNode(k))}</span></div>`)
+    .join('')
+  const dlBtn = document.getElementById('btn-legend-download')!
+  dlBtn.style.display = types.length ? '' : 'none'
+}
+
+function downloadRenderConfig(): void {
+  const jsonld = buildRenderConfigJsonLd(TYPE_COLORS, TYPE_RADII, HULL_FILLS, prefixes)
+  const blob = new Blob([JSON.stringify(jsonld, null, 2)], { type: 'application/ld+json' })
+  const a = Object.assign(document.createElement('a'), {
+    href:     URL.createObjectURL(blob),
+    download: 'render-config.jsonld',
+  })
+  a.click()
+  URL.revokeObjectURL(a.href)
+  toast('Render config downloaded', 'success')
+}
+
+function buildRenderPanel(): void {
+  const panel = document.getElementById('render-panel')!
+  panel.innerHTML = ''
+
+  const types = Object.entries(TYPE_COLORS)
+    .filter(([k]) => k !== 'default' && !k.startsWith('rdfs'))
+
+  if (types.length === 0) {
+    const hint = document.createElement('div')
+    hint.className = 'mono text-xs text-muted'
+    hint.style.padding = '8px'
+    hint.textContent = 'No types loaded — load a file to configure colors.'
+    panel.appendChild(hint)
+    return
+  }
+
+  // One swatch row per type
+  for (const [typeIri, color] of types) {
+    const row = document.createElement('div')
+    row.className = 'render-swatch-row'
+
+    const swatch = document.createElement('input')
+    swatch.type  = 'color'
+    swatch.value = color
+    swatch.addEventListener('input', () => {
+      TYPE_COLORS[typeIri] = swatch.value
+      buildLegend()
+      graphView?.refreshColors()
+    })
+
+    const label = document.createElement('span')
+    label.className   = 'mono text-xs'
+    label.textContent = labelNode(typeIri)
+    label.title       = typeIri
+
+    row.append(swatch, label)
+    panel.appendChild(row)
+  }
+
+  // Button row
+  const btnRow = document.createElement('div')
+  btnRow.className = 'render-btn-row'
+
+  const btnAuto = document.createElement('button')
+  btnAuto.className   = 'btn sm'
+  btnAuto.textContent = 'Auto-assign colors'
+  btnAuto.addEventListener('click', () => {
+    const assigned = assignTypeColors(types.map(([iri]) => iri))
+    Object.assign(TYPE_COLORS, assigned)
+    buildRenderPanel()
+    buildLegend()
+    graphView?.refreshColors()
+  })
+
+  const btnExport = document.createElement('button')
+  btnExport.className   = 'btn sm'
+  btnExport.textContent = 'Export JSON-LD'
+  btnExport.addEventListener('click', downloadRenderConfig)
+
+  btnRow.append(btnAuto, btnExport)
+  panel.appendChild(btnRow)
 }
 function updateCacheBadge(ts: string, hash: string): void {
   document.getElementById('cache-info')!.textContent = `loaded ${new Date(ts).toLocaleTimeString()} \u00B7 ${hash}`

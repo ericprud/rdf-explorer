@@ -52,11 +52,46 @@ export interface DataLoader {
   buildPanel(container: HTMLElement, onTurtleChanged: TurtleChangedCallback): void
 
   /**
+   * Optional: parse a raw file buffer and return a ParseResult.
+   * Used by loader implementations and tests; not called by the host directly
+   * (the host calls buildPanel which wires up drag-drop / file-input).
+   */
+  parse?(buffer: ArrayBuffer): Promise<ParseResult>
+
+  /**
    * Optional: update the base IRI used for relative-IRI resolution and
    * re-emit Turtle.  Called by the host when the user changes the base IRI.
    * Loaders that do not implement this simply ignore base IRI changes.
    */
   setBaseIri?(baseIri: string): void
+
+  /**
+   * Prefix map used to expand typeColors / typeRadii / hullFills keys.
+   * Format: { prefixLabel: namespaceUri }
+   * e.g. { foaf: 'http://xmlns.com/foaf/0.1/', ex: 'https://example.org/knows#' }
+   * These prefixes are also prepended as @prefix declarations to the Turtle
+   * output by the host, so loaders need not embed them in the turtle string.
+   */
+  prefixes?: Record<string, string>
+
+  /**
+   * Map from type IRI (or prefixed name / <iri>) to a CSS hex colour.
+   * Resolved against `prefixes` before being merged into the global TYPE_COLORS.
+   * e.g. { 'foaf:Person': '#4f9cf9', '<http://schema.org/Event>': '#f97316' }
+   */
+  typeColors?: Record<string, string>
+
+  /**
+   * Map from type IRI (or prefixed name / <iri>) to a node radius in pixels.
+   * Resolved the same way as typeColors.
+   */
+  typeRadii?: Record<string, number>
+
+  /**
+   * Map from type IRI (or prefixed name / <iri>) to a convex-hull CSS fill.
+   * Resolved the same way as typeColors.
+   */
+  hullFills?: Record<string, string>
 }
 
 /** @deprecated Use DataLoader */

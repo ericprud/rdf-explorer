@@ -253,6 +253,9 @@ export class GraphView {
     this.render()
   }
 
+  /** Re-render in place (without restarting the simulation) after TYPE_COLORS change. */
+  refreshColors(): void { this.render() }
+
   private get W() { return this.opts.container.clientWidth  || 900 }
   private get H() { return this.opts.container.clientHeight || 650 }
   private toast(msg: string, type: 'info' | 'success' | 'error' = 'info') { this.opts.onToast?.(msg, type) }

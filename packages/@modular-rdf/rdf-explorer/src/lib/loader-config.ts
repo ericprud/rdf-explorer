@@ -15,7 +15,7 @@
  *
  * ── ADDING A LOADER ──────────────────────────────────────────────────────────
  *
- * 1. Write your loader in src/lib/my-loader.ts (implement DataLoader interface).
+ * 1. Write your loader in src/lib/my-loader.ts (implement GraphSource interface).
  * 2. Add a build entry in scripts/build-loaders.mjs.
  * 3. Import and add to BUNDLED_LOADERS below for dev convenience.
  *

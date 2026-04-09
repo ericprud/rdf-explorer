@@ -21,7 +21,7 @@
  *   • Unknown lines produce a warning and are skipped.
  */
 
-import type { DataLoader, ParseResult, TurtleChangedCallback } from './parser-api'
+import type { GraphSource, ParseResult, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
 import { buildBasePanel } from './base-panel'
 
 const BASE    = 'https://example.org/knows#'
@@ -89,9 +89,10 @@ export function triplesToTurtle(triples: Array<[string, string, string]>, baseIr
 
   for (const [subj, pairs] of bySubj) {
     const shorten = (iri: string) =>
-      iri.startsWith(BASE)  ? `<#${iri.slice(BASE.length)}>`  :
-      iri.startsWith(NS_FOAF)  ? `foaf:${iri.slice(NS_FOAF.length)}` :
-      iri.startsWith('"')   ? iri :
+      iri === `${NS_RDF}type`      ? 'a' :
+      iri.startsWith(BASE)         ? `<#${iri.slice(BASE.length)}>` :
+      iri.startsWith(NS_FOAF)      ? `foaf:${iri.slice(NS_FOAF.length)}` :
+      iri.startsWith('"')          ? iri :
       `<${iri}>`
 
     const s = shorten(subj)
@@ -106,7 +107,7 @@ export function triplesToTurtle(triples: Array<[string, string, string]>, baseIr
   return lines.join('\n')
 }
 
-class KnowsLoader implements DataLoader {
+class KnowsLoader implements GraphSource {
   readonly name        = '"knows" DSL parser'
   readonly description = 'Parses "Alice knows Bob." lines → foaf:knows Turtle'
   readonly accepts     = ['.txt', '.knows']
@@ -170,6 +171,6 @@ class KnowsLoader implements DataLoader {
   }
 }
 
-export const parser: DataLoader = new KnowsLoader()
+export const parser: GraphSource = new KnowsLoader()
 
 export default parser

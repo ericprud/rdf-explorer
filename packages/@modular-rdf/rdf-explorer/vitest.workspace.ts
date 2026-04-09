@@ -1,7 +1,13 @@
 import { defineWorkspace } from 'vitest/config'
+import { resolve } from 'path'
+
+const apiAlias = {
+  '@modular-rdf/graph-source-api': resolve(__dirname, '../graph-source-api/src/index.ts'),
+}
 
 export default defineWorkspace([
   {
+    resolve: { alias: apiAlias },
     test: {
       name:        'node',
       environment: 'node',
@@ -11,6 +17,7 @@ export default defineWorkspace([
     },
   },
   {
+    resolve: { alias: apiAlias },
     test: {
       name:        'dom',
       environment: 'jsdom',

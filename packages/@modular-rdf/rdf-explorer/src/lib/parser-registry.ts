@@ -1,7 +1,7 @@
 /**
  * Loader Registry  (v2)
  *
- * Manages a list of DataLoader instances.  Each loader gets its own drop-zone
+ * Manages a list of GraphSource instances.  Each loader gets its own drop-zone
  * panel in the sidebar.  Loaders can be added at startup via loader-config.ts
  * (for development) or at runtime by the user dragging a .js loader file onto
  * the "Load" section header.
@@ -9,10 +9,10 @@
  * The registry emits change events so the UI can rebuild the sidebar panels.
  */
 
-import type { DataLoader } from './parser-api'
+import type { GraphSource } from '@modular-rdf/graph-source-api'
 
 // ── Subscribers ──────────────────────────────────────────────────────────────
-type ChangeListener = (loaders: DataLoader[]) => void
+type ChangeListener = (loaders: GraphSource[]) => void
 const listeners: ChangeListener[] = []
 
 export function onLoadersChange(cb: ChangeListener): void {
@@ -24,10 +24,10 @@ function notify(): void {
 }
 
 // ── Internal store ────────────────────────────────────────────────────────────
-const _loaders: DataLoader[] = []
+const _loaders: GraphSource[] = []
 
 /** All currently registered loaders (in registration order). */
-export function getLoaders(): DataLoader[] {
+export function getLoaders(): GraphSource[] {
   return [..._loaders]
 }
 
@@ -35,7 +35,7 @@ export function getLoaders(): DataLoader[] {
  * Register a loader.  If a loader with the same name already exists it is
  * replaced in-place (so re-uploading an updated parser works as expected).
  */
-export function registerLoader(loader: DataLoader): void {
+export function registerLoader(loader: GraphSource): void {
   const idx = _loaders.findIndex(l => l.name === loader.name)
   if (idx >= 0) _loaders[idx] = loader
   else          _loaders.push(loader)
@@ -43,26 +43,26 @@ export function registerLoader(loader: DataLoader): void {
 }
 
 /**
- * Load a DataLoader from a Blob URL that resolves to an ES module.
+ * Load a GraphSource from a Blob URL that resolves to an ES module.
  * The module must export `parser` (named) or `default`.
  * Validates the export, registers the loader, and returns it.
  */
-export async function loadLoaderFromBlob(blobUrl: string): Promise<DataLoader> {
+export async function loadLoaderFromBlob(blobUrl: string): Promise<GraphSource> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mod: Record<string, any> = await import(/* @vite-ignore */ blobUrl)
-  const candidate: DataLoader = mod['parser'] ?? mod['default']
+  const candidate: GraphSource = mod['parser'] ?? mod['default']
 
   if (!candidate || typeof candidate.buildPanel !== 'function') {
     throw new Error(
-      'Module has no valid DataLoader export.\n' +
+      'Module has no valid GraphSource export.\n' +
       'Expected: export const parser = { name, accepts, buildPanel(container, onTurtleChanged) }',
     )
   }
   if (!candidate.name) {
-    throw new Error('DataLoader must have a non-empty name field.')
+    throw new Error('GraphSource must have a non-empty name field.')
   }
   if (!Array.isArray(candidate.accepts) || candidate.accepts.length === 0) {
-    throw new Error('DataLoader must declare at least one file extension in `accepts`.')
+    throw new Error('GraphSource must declare at least one file extension in `accepts`.')
   }
 
   registerLoader(candidate)

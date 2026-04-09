@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { parser as knowsParser } from '../knows-parser'
-import type { DataLoader } from '../parser-api'
+import type { GraphSource } from '@modular-rdf/graph-source-api'
 
 // We import the registry functions fresh each test by reimporting via dynamic
 // import after clearing module state — but since Vitest uses ESM isolation per
@@ -19,7 +19,7 @@ import {
 } from '../parser-registry'
 
 // Helper: a minimal stub loader
-function stubLoader(name: string, exts: string[] = ['.stub']): DataLoader {
+function stubLoader(name: string, exts: string[] = ['.stub']): GraphSource {
   return {
     name,
     accepts: exts,
@@ -78,7 +78,7 @@ describe('getAllAccepts', () => {
   })
 })
 
-describe('knowsParser as a DataLoader', () => {
+describe('knowsParser as a GraphSource', () => {
   it('is registerable and retrievable', () => {
     registerLoader(knowsParser)
     const found = getLoaders().find(l => l.name === knowsParser.name)
@@ -101,7 +101,7 @@ describe('loadLoaderFromBlob — failure modes', () => {
     const { loadLoaderFromBlob } = await import('../parser-registry')
     // Instead of a real blob, we test the validation directly:
     // create a module-like object missing name and check the error string
-    const bad = { parse: async () => ({}) } as unknown as DataLoader
+    const bad = { parse: async () => ({}) } as unknown as GraphSource
     // registerLoader itself doesn't throw — it's loadLoaderFromBlob that validates.
     // We can test that the loader with missing name wouldn't pass the checks by
     // reading the validation logic outcome:

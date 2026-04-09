@@ -7,10 +7,10 @@
 import { describe, it, expect, vi } from 'vitest'
 import { buildLoaderPanels } from '../../loader-panels'
 import { buildBasePanel }    from '../../base-panel'
-import type { DataLoader, TurtleChangedCallback } from '../../parser-api'
+import type { GraphSource, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
 
 // ── Stub loader factory ───────────────────────────────────────────────────────
-function stub(name: string, exts: string[] = ['.txt'], desc?: string): DataLoader {
+function stub(name: string, exts: string[] = ['.txt'], desc?: string): GraphSource {
   return {
     name,
     description: desc,
@@ -96,7 +96,7 @@ describe('buildLoaderPanels — callbacks', () => {
     const onTurtle: TurtleChangedCallback = (t) => received.push(t)
 
     // Loader with a buildPanel that immediately calls onTurtleChanged
-    const loader: DataLoader = {
+    const loader: GraphSource = {
       name: 'Immediate', accepts: ['.txt'],
       buildPanel(_container, cb) { cb('turtle-data') },
       async parse() { return { turtle: '', warnings: [], sheetsSeen: [], tripleCount: 0, timestamp: '', fileHash: '' } },

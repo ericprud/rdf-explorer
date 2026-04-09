@@ -1,12 +1,12 @@
 /**
  * loader-panels.ts
  *
- * Hosts the per-loader sidebar panels.  Each DataLoader is responsible for
+ * Hosts the per-loader sidebar panels.  Each GraphSource is responsible for
  * building its own panel DOM via `loader.buildPanel(container, onTurtleChanged)`.
  * This module manages the container element and the registry-change subscription.
  */
 
-import type { DataLoader, TurtleChangedCallback } from './parser-api'
+import type { GraphSource, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
 import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '../components/graph-view'
 import { resolveTypeKeys }                         from './resolve-type-keys'
 
@@ -20,7 +20,7 @@ export type { TurtleChangedCallback }
  * when their turtle output changes.
  */
 export function buildLoaderPanels(
-  loaders:          DataLoader[],
+  loaders:          GraphSource[],
   container:        HTMLElement,
   onTurtleChanged:  TurtleChangedCallback,
 ): void {

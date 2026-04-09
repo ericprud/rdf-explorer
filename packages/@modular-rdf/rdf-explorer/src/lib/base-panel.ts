@@ -2,14 +2,14 @@
  * base-panel.ts
  *
  * Provides `buildBasePanel()` — the standard drop-zone + file-input widget
- * that every DataLoader panel needs.  Loaders call this and optionally append
+ * that every GraphSource panel needs.  Loaders call this and optionally append
  * extra controls afterwards.
  *
  * Also re-exports the shared `esc()` helper so loaders don't have to
  * reimplement it.
  */
 
-import type { DataLoader } from './parser-api'
+import type { GraphSource } from '@modular-rdf/graph-source-api'
 
 /** HTML-escape for safe insertion into text content or attribute values. */
 export function esc(s: string): string {
@@ -26,7 +26,7 @@ export function esc(s: string): string {
  */
 export function buildBasePanel(
   container: HTMLElement,
-  loader:    Pick<DataLoader, 'name' | 'description' | 'accepts'>,
+  loader:    Pick<GraphSource, 'name' | 'description' | 'accepts'>,
   onFile:    (file: File) => void,
 ): HTMLElement {
   const hint = loader.description ?? loader.accepts.join(' · ')

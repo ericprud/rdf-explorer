@@ -14,7 +14,10 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH ?? '/',
   plugins: [buildInfoPlugin()],
   resolve: {
-    alias: { '@': resolve(__dirname, 'src') }
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@modular-rdf/graph-source-api': resolve(__dirname, '../graph-source-api/src/index.ts'),
+    }
   },
   server: {
     watch: { usePolling: false },

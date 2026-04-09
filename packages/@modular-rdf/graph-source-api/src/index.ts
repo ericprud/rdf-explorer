@@ -1,7 +1,7 @@
 /**
- * Loader / Parser API  (v4)
+ * @modular-rdf/graph-source-api  (v4)
  *
- * A DataLoader converts files to Turtle and optionally owns UI controls
+ * A GraphSource converts files to Turtle and optionally owns UI controls
  * rendered inside its sidebar panel.
  *
  * TURTLE CALLBACK
@@ -33,7 +33,7 @@ export interface ParseResult {
 /** Callback the host supplies; called whenever the loader has new Turtle. */
 export type TurtleChangedCallback = (turtle: string) => void
 
-export interface DataLoader {
+export interface GraphSource {
   /** Short label shown as the drop-zone title. Required. */
   name: string
 
@@ -69,30 +69,21 @@ export interface DataLoader {
    * Prefix map used to expand typeColors / typeRadii / hullFills keys.
    * Format: { prefixLabel: namespaceUri }
    * e.g. { foaf: 'http://xmlns.com/foaf/0.1/', ex: 'https://example.org/knows#' }
-   * These prefixes are also prepended as @prefix declarations to the Turtle
-   * output by the host, so loaders need not embed them in the turtle string.
    */
   prefixes?: Record<string, string>
 
   /**
    * Map from type IRI (or prefixed name / <iri>) to a CSS hex colour.
-   * Resolved against `prefixes` before being merged into the global TYPE_COLORS.
    * e.g. { 'foaf:Person': '#4f9cf9', '<http://schema.org/Event>': '#f97316' }
    */
   typeColors?: Record<string, string>
 
-  /**
-   * Map from type IRI (or prefixed name / <iri>) to a node radius in pixels.
-   * Resolved the same way as typeColors.
-   */
+  /** Map from type IRI (or prefixed name / <iri>) to a node radius in pixels. */
   typeRadii?: Record<string, number>
 
-  /**
-   * Map from type IRI (or prefixed name / <iri>) to a convex-hull CSS fill.
-   * Resolved the same way as typeColors.
-   */
+  /** Map from type IRI (or prefixed name / <iri>) to a convex-hull CSS fill. */
   hullFills?: Record<string, string>
 }
 
-/** @deprecated Use DataLoader */
-export type SpreadsheetParser = DataLoader
+/** @deprecated Use GraphSource */
+export type GraphSource = GraphSource

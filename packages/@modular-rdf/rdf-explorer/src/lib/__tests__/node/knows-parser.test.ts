@@ -4,9 +4,10 @@
  * Run with: npx vitest run
  */
 import { describe, it, expect } from 'vitest'
-import { parseKnowsDsl, triplesToTurtle, parser } from '../knows-parser'
+import { parseKnowsDsl, triplesToTurtle, parser } from '../../knows-parser'
 
 const FOAF = 'http://xmlns.com/foaf/0.1/'
+const RDF  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 const BASE = 'https://example.org/knows#'
 
 describe('parseKnowsDsl', () => {
@@ -18,7 +19,7 @@ describe('parseKnowsDsl', () => {
 
   it('produces foaf:Person triples for both subject and object', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const types = triples.filter(([,p]) => p === `${FOAF}type`).map(([s]) => s)
+    const types = triples.filter(([,p]) => p === `${RDF}type`).map(([s]) => s)
     expect(types).toContain(`${BASE}Alice`)
     expect(types).toContain(`${BASE}Bob`)
   })
@@ -26,15 +27,14 @@ describe('parseKnowsDsl', () => {
   it('produces foaf:name literals for every person', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.')
     const names = triples.filter(([,p]) => p === `${FOAF}name`).map(([s,,o]) => [s, o])
-    const XSD = 'http://www.w3.org/2001/XMLSchema#string'
-    expect(names).toContainEqual([`${BASE}Alice`, `"Alice"^^${XSD}`])
-    expect(names).toContainEqual([`${BASE}Bob`,   `"Bob"^^${XSD}`])
+    expect(names).toContainEqual([`${BASE}Alice`, '"Alice"^^xsd:string'])
+    expect(names).toContainEqual([`${BASE}Bob`,   '"Bob"^^xsd:string'])
   })
 
   it('handles multiple statements', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.\nBob knows Carol.')
     const knows  = triples.filter(([,p]) => p === `${FOAF}knows`)
-    const people = new Set(triples.filter(([,p]) => p === `${FOAF}type`).map(([s]) => s))
+    const people = new Set(triples.filter(([,p]) => p === `${RDF}type`).map(([s]) => s))
     expect(knows).toHaveLength(2)
     expect(people.size).toBe(3)
   })
@@ -42,7 +42,7 @@ describe('parseKnowsDsl', () => {
   it('deduplicates people mentioned multiple times', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.\nAlice knows Carol.')
     const aliceTypes = triples.filter(([s, p]) =>
-      s === `${BASE}Alice` && p === `${FOAF}type`)
+      s === `${BASE}Alice` && p === `${RDF}type`)
     expect(aliceTypes).toHaveLength(1)
   })
 
@@ -79,33 +79,39 @@ describe('parseKnowsDsl', () => {
 })
 
 describe('triplesToTurtle', () => {
-  it('produces Turtle with prefix declarations', () => {
+  it('produces Turtle with prefix and base declarations', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.')
     const ttl = triplesToTurtle(triples)
     expect(ttl).toContain('@prefix foaf:')
-    expect(ttl).toContain('@prefix ex:')
+    expect(ttl).toContain('@base <https://example.org/knows#>')
   })
 
-  it('uses qnames for known prefixes', () => {
+  it('uses relative IRIs for base-namespace subjects', () => {
     const { triples } = parseKnowsDsl('Alice knows Bob.')
     const ttl = triplesToTurtle(triples)
-    expect(ttl).toContain('ex:Alice')
+    expect(ttl).toContain('<#Alice>')
     expect(ttl).toContain('foaf:knows')
     expect(ttl).not.toContain('<http://xmlns.com/foaf/0.1/knows>')
+  })
+
+  it('uses "a" shorthand for rdf:type', () => {
+    const { triples } = parseKnowsDsl('Alice knows Bob.')
+    const ttl = triplesToTurtle(triples)
+    expect(ttl).toContain('a foaf:Person')
   })
 
   it('round-trips through parseKnowsDsl without data loss', () => {
     const input = 'Alice knows Bob.\nBob knows Carol.'
     const { triples } = parseKnowsDsl(input)
     const ttl = triplesToTurtle(triples)
-    // All three people should appear
-    expect(ttl).toContain('ex:Alice')
-    expect(ttl).toContain('ex:Bob')
-    expect(ttl).toContain('ex:Carol')
+    // All three people should appear as relative IRIs
+    expect(ttl).toContain('<#Alice>')
+    expect(ttl).toContain('<#Bob>')
+    expect(ttl).toContain('<#Carol>')
   })
 })
 
-describe('DataLoader interface conformance', () => {
+describe('GraphSource interface conformance', () => {
   it('has required name, accepts, parse fields', () => {
     expect(typeof parser.name).toBe('string')
     expect(parser.name.length).toBeGreaterThan(0)

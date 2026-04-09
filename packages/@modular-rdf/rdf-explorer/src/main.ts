@@ -2,7 +2,7 @@
  * RDF Explorer – Main entry point
  *
  * Design principles for loaders:
- *  • Each DataLoader owns its own panel DOM (via buildPanel).
+ *  • Each GraphSource owns its own panel DOM (via buildPanel).
  *  • Loaders call onTurtleChanged(turtle) whenever their output changes.
  *  • main.ts knows nothing about vocab toggles or parser-internal state.
  *
@@ -25,7 +25,7 @@ import { ShExEditor }                                  from './components/shex-e
 import { ShExWorkerClient }                            from './lib/shex-worker-client'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange } from './lib/parser-registry'
 import { buildLoaderPanels }                           from './lib/loader-panels'
-import type { DataLoader, ParseResult }                from './lib/parser-api'
+import type { GraphSource, ParseResult }                from '@modular-rdf/graph-source-api'
 import { inferTypes }                                  from './lib/type-inference'
 import type { GraphNode, GraphData }                   from './lib/graph-store'
 import * as N3                                         from 'n3'
@@ -325,7 +325,7 @@ restoreTheme()
 // ── Loader panels ─────────────────────────────────────────────────────────────
 const loaderPanelContainer = document.getElementById('loader-panels')!
 
-function rebuildLoaderPanels(loaders: DataLoader[]): void {
+function rebuildLoaderPanels(loaders: GraphSource[]): void {
   buildLoaderPanels(loaders, loaderPanelContainer, handleTurtleFromLoader)
   // Push the current baseIri to any newly registered loader that supports it
   for (const loader of loaders) loader.setBaseIri?.(baseIri)

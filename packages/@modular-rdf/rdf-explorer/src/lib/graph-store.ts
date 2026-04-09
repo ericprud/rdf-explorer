@@ -91,7 +91,7 @@ export async function parseTurtleToGraph(
     }
     if (q.predicate.value === RDF_TYPE) {
       if (!typeMap.has(q.subject.value)) typeMap.set(q.subject.value, [])
-      typeMap.get(q.subject.value)!.push(shortIri(q.object.value, prefixes))
+      typeMap.get(q.subject.value)!.push(q.object.value)
     }
     // Collect literal objects as scalar properties
     if (q.subject.termType === 'NamedNode' && q.object.termType === 'Literal') {

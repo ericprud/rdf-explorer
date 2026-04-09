@@ -63,7 +63,7 @@ function nodeRadius(n: GraphNode): number {
   if (n.expanded) return 16
   for (const [matchType, radius] of Object.entries(TYPE_RADII))
     for (const nType of n.types)
-      if (nType.includes(matchType))
+      if (nType === matchType)
         return radius
   return TYPE_RADII.default
 }
@@ -533,7 +533,7 @@ export class GraphView {
   private nodeTooltip(d: GraphNode): string {
     const lines = [
       d.label,
-      `type: ${d.types.join(', ') || 'none'}`,
+      `type: ${d.types.map(t => this.labelFn(t)).join(', ') || 'none'}`,
       `IRI:  ${d.id}`,
     ]
     if (this.hideScalarArcs && d.scalars.length > 0) {

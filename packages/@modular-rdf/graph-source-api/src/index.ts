@@ -85,5 +85,3 @@ export interface GraphSource {
   hullFills?: Record<string, string>
 }
 
-/** @deprecated Use GraphSource */
-export type GraphSource = GraphSource

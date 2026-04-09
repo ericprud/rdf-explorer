@@ -13,24 +13,26 @@
  * Ctrl+PgUp/Dn works in all panes including CodeMirror (turtle/shex).
  */
 import './styles/main.css'
-import { parseTurtleToGraph, readHistory, pushHistory } from './lib/graph-store'
-import { buildN3Store, runSparqlSelect }                from './lib/sparql-runner'
-import { generateShEx, EX as EX_ns }                   from './lib/shex-validator'
-import { assignTypeColors }                             from './lib/color-scheme'
-import { buildRenderConfigJsonLd, parseRenderConfigJsonLd } from './lib/render-config-jsonld'
-import { diffTurtle, renderDiffHtml }                  from './lib/diff'
-import { GraphView, TYPE_COLORS, TYPE_RADII, HULL_FILLS } from './components/graph-view'
-import { TurtleEditor }                                from './components/turtle-editor'
-import { ShExEditor }                                  from './components/shex-editor'
-import { ShExWorkerClient }                            from './lib/shex-worker-client'
+import { parseTurtleToGraph, readHistory, pushHistory }    from './lib/graph-store'
+import { buildN3Store, runSparqlSelect }                   from './lib/sparql-runner'
+import { generateShEx, EX as EX_ns }                       from './lib/shex-validator'
+import { assignTypeColors }                                from './lib/color-scheme'
+import { buildRenderConfigJsonLd, parseRenderConfigJsonLd,
+         normalisePrefixes }                               from './lib/render-config-jsonld'
+import { diffTurtle, renderDiffHtml }                      from './lib/diff'
+import { GraphView, TYPE_COLORS, TYPE_RADII, HULL_FILLS }  from './components/graph-view'
+import { TurtleEditor }                                    from './components/turtle-editor'
+import { ShExEditor }                                      from './components/shex-editor'
+import { ShExWorkerClient }                                from './lib/shex-worker-client'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange } from './lib/parser-registry'
-import { buildLoaderPanels }                           from './lib/loader-panels'
-import type { GraphSource, ParseResult }                from '@modular-rdf/graph-source-api'
-import { inferTypes }                                  from './lib/type-inference'
-import type { GraphNode, GraphData }                   from './lib/graph-store'
-import * as N3                                         from 'n3'
-import { labelIri, LABEL_MODES, LABEL_MODE_NAMES, SEGMENT_SEP,
-         type LabelMode }                              from './lib/label-mode'
+import { buildLoaderPanels }                               from './lib/loader-panels'
+import { resolveTypeKeys }                                 from './lib/resolve-type-keys'
+import type { GraphSource, ParseResult }                   from '@modular-rdf/graph-source-api'
+import { inferTypes }                                      from './lib/type-inference'
+import type { GraphNode, GraphData }                       from './lib/graph-store'
+import * as N3                                             from 'n3'
+import { labelIri, LABEL_MODES, LABEL_MODE_NAMES,
+         SEGMENT_SEP, type LabelMode }                     from './lib/label-mode'
 
 // ── Dev: pre-register loaders.  Remove for production. ───────────────────────
 import { registerDevLoaders } from './lib/loader-config'
@@ -397,9 +399,12 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
     try {
       const cfg = parseRenderConfigJsonLd(JSON.parse(await file.text()))
       if (!cfg) { toast('Not a valid render config JSON-LD', 'error'); return }
-      Object.assign(TYPE_COLORS, cfg.typeColors)
-      Object.assign(TYPE_RADII,  cfg.typeRadii)
-      Object.assign(HULL_FILLS,  cfg.hullFills)
+      // Expand any prefixed names / relative IRIs not resolved by the JSON-LD @context
+      // using the Turtle pane's current prefix map as a fallback.
+      const turtlePfx = normalisePrefixes(prefixes)
+      Object.assign(TYPE_COLORS, resolveTypeKeys(cfg.typeColors, turtlePfx))
+      Object.assign(TYPE_RADII,  resolveTypeKeys(cfg.typeRadii,  turtlePfx))
+      Object.assign(HULL_FILLS,  resolveTypeKeys(cfg.hullFills,  turtlePfx))
       buildLegend()
       if (graphData) graphView?.refreshColors()
       if (document.getElementById('render-panel')!.style.display !== 'none') buildRenderPanel()
@@ -450,6 +455,15 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
     n3Store   = store
     graphData = parsed.graph
     prefixes  = parsed.prefixes
+    // Re-expand loader rendering prefs now we have the Turtle's full prefix map.
+    // Loader prefixes take priority; Turtle prefixes fill in anything not declared.
+    const turtlePfx = normalisePrefixes(prefixes)
+    for (const loader of getLoaders()) {
+      const combined = { ...turtlePfx, ...(loader.prefixes ?? {}) }
+      if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, combined))
+      if (loader.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(loader.typeRadii,  combined))
+      if (loader.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(loader.hullFills,  combined))
+    }
     refreshRdfsLabels()
 
     graphView!.load(graphData)

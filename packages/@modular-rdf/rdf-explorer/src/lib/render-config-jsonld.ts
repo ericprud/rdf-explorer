@@ -35,7 +35,7 @@ const REX_NS  = 'https://github.com/ericprud/rdf-explorer/ns#'
 const XSD_NS  = 'http://www.w3.org/2001/XMLSchema#'
 
 /** Produce { prefixLabel → nsUri } from the mixed-format main.ts prefixes map. */
-function normalisePrefixes(mixed: Record<string, string>): Record<string, string> {
+export function normalisePrefixes(mixed: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(mixed)) {
     if (k.startsWith('http')) {

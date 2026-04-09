@@ -20,10 +20,14 @@ export async function buildN3Store(
   }
 }
 
-export function runSparqlSelect(store: N3.Store, query: string): SparqlResult {
+export function runSparqlSelect(
+  store:           N3.Store,
+  query:           string,
+  prefixOverrides: Record<string, string> = {},
+): SparqlResult {
   try {
     const variables = extractVars(query)
-    const bindings  = evalBGP(store, query, variables)
+    const bindings  = evalBGP(store, query, variables, prefixOverrides)
     return { variables, bindings }
   } catch (e) {
     return { variables: [], bindings: [], error: String(e) }
@@ -45,10 +49,10 @@ function extractVars(query: string): string[] {
 // ── Basic graph-pattern evaluator ───────────────────────────────────────────
 interface TPattern { s: string; p: string; o: string }
 
-function evalBGP(store: N3.Store, query: string, _vars: string[]): SparqlBinding[] {
+function evalBGP(store: N3.Store, query: string, _vars: string[], prefixOverrides: Record<string,string> = {}): SparqlBinding[] {
   const wm = query.match(/WHERE\s*\{([\s\S]+?)\}/si)
   if (!wm) return []
-  const patterns = parsePatterns(wm[1])
+  const patterns = parsePatterns(wm[1], prefixOverrides)
   if (!patterns.length) return []
 
   let bindings: SparqlBinding[] = [{}]
@@ -86,16 +90,16 @@ function evalBGP(store: N3.Store, query: string, _vars: string[]): SparqlBinding
 }
 
 // ── Triple pattern parser ─────────────────────────────────────────────────
-const PREFIXES: Record<string, string> = {
+const BUILTIN_SPARQL_PREFIXES: Record<string, string> = {
   rdf:  'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
   rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
   xsd:  'http://www.w3.org/2001/XMLSchema#',
-  ex:   'https://example.org/upload#',
   foaf: 'http://xmlns.com/foaf/0.1/',
   owl:  'http://www.w3.org/2002/07/owl#',
 }
 
-function parsePatterns(body: string): TPattern[] {
+function parsePatterns(body: string, overrides: Record<string,string> = {}): TPattern[] {
+  const PREFIXES = { ...BUILTIN_SPARQL_PREFIXES, ...overrides }
   const clean = body.replace(/#[^\n]*/g, '')
   return clean
     .split(/\s*\.\s*/)
@@ -104,7 +108,7 @@ function parsePatterns(body: string): TPattern[] {
     .map(s => {
       const toks = tokenize(s)
       return toks.length >= 3
-        ? { s: expand(toks[0]), p: expand(toks[1]), o: expand(toks[2]) }
+        ? { s: expand(toks[0], PREFIXES), p: expand(toks[1], PREFIXES), o: expand(toks[2], PREFIXES) }
         : null
     })
     .filter((p): p is TPattern => p !== null)
@@ -133,12 +137,12 @@ function tokenize(s: string): string[] {
   return toks
 }
 
-function expand(tok: string): string {
+function expand(tok: string, pfxMap: Record<string,string>): string {
   if (tok.startsWith('?') || tok.startsWith('"')) return tok
   const ci = tok.indexOf(':')
   if (ci > 0) {
     const pfx = tok.slice(0, ci), local = tok.slice(ci + 1)
-    if (PREFIXES[pfx]) return PREFIXES[pfx] + local
+    if (pfxMap[pfx]) return pfxMap[pfx] + local
   }
   return tok
 }

@@ -15,7 +15,9 @@ export type { TurtleChangedCallback }
 /**
  * (Re)build all loader panels inside `container`.
  *
- * For each loader, creates a wrapper div and calls `loader.buildPanel()`.
+ * For each loader, creates a wrapper div, calls `loader.buildPanel()`, then
+ * immediately pushes `baseIri` via `loader.setBaseIri()` so the panel starts
+ * with the same base IRI that main.ts is currently using.
  * `onTurtleChanged` is forwarded to each loader so they can notify the host
  * when their turtle output changes.
  */
@@ -23,6 +25,7 @@ export function buildLoaderPanels(
   loaders:          GraphSource[],
   container:        HTMLElement,
   onTurtleChanged:  TurtleChangedCallback,
+  baseIri:          string,
 ): void {
   container.innerHTML = ''
 
@@ -42,6 +45,7 @@ export function buildLoaderPanels(
     container.appendChild(wrapper)
     // Delegate all DOM construction (drop-zone, controls) to the loader itself
     loader.buildPanel(wrapper, onTurtleChanged)
+    loader.setBaseIri?.(baseIri)
     const pfx = loader.prefixes ?? {}
     if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, pfx))
     if (loader.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(loader.typeRadii,  pfx))

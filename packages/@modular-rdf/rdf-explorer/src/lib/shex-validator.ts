@@ -15,15 +15,12 @@ export interface ValidationResult {
   errors:  string[]
 }
 
-export const EX = 'https://example.org/upload#'
-
 const RDF_TYPE  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 const BUILTIN_PREFIXES: Record<string, string> = {
   rdf:  'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
   rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
   xsd:  'http://www.w3.org/2001/XMLSchema#',
   foaf: 'http://xmlns.com/foaf/0.1/',
-  ex:   EX,
 }
 
 /** Build an IRI shortener from a merged prefix map. */
@@ -47,8 +44,8 @@ export function distinctExTypes(store: N3.Store): string[] {
   return [...seen].sort()
 }
 
-export async function generateShEx(turtle: string): Promise<string> {
-  const { store, prefixes } = await parseIntoStore(turtle)
+export async function generateShEx(turtle: string, baseIri?: string): Promise<string> {
+  const { store, prefixes } = await parseIntoStore(turtle, baseIri)
   const short = makeShortener(prefixes)
 
   // Collect all distinct rdf:type values, regardless of namespace
@@ -73,7 +70,8 @@ export async function generateShEx(turtle: string): Promise<string> {
   }
 
   // Emit PREFIX declarations: builtins first, then any extra from the turtle
-  const allPrefixes = { ...BUILTIN_PREFIXES, ...prefixes }
+  const exNs = baseIri ? baseIri.replace(/\/$/, '#') : undefined
+  const allPrefixes = { ...BUILTIN_PREFIXES, ...(exNs ? { ex: exNs } : {}), ...prefixes }
   const lines = Object.entries(allPrefixes).map(([p, ns]) => `PREFIX ${p}: <${ns}>`)
   lines.push('')
 

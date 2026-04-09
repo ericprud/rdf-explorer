@@ -35,20 +35,20 @@ const noop: TurtleChangedCallback = () => {}
 describe('buildLoaderPanels — structure', () => {
   it('renders one panel per loader', () => {
     const c = container()
-    buildLoaderPanels([stub('A'), stub('B'), stub('C')], c, noop)
+    buildLoaderPanels([stub('A'), stub('B'), stub('C')], c, noop, "https://example.org/")
     expect(c.querySelectorAll('.loader-dropzone')).toHaveLength(3)
   })
 
   it('shows hint text when loader list is empty', () => {
     const c = container()
-    buildLoaderPanels([], c, noop)
+    buildLoaderPanels([], c, noop, "https://example.org/")
     expect(c.querySelectorAll('.loader-dropzone')).toHaveLength(0)
     expect(c.textContent).toMatch(/drop a .js loader/i)
   })
 
   it('each panel carries a data-loader-name attribute', () => {
     const c = container()
-    buildLoaderPanels([stub('My Loader')], c, noop)
+    buildLoaderPanels([stub('My Loader')], c, noop, "https://example.org/")
     const panel = c.querySelector('.loader-dropzone')!
     expect(panel.getAttribute('data-loader-name')).toBe('My Loader')
   })
@@ -58,7 +58,7 @@ describe('buildLoaderPanels — structure', () => {
 describe('buildLoaderPanels — file input', () => {
   it('each panel contains exactly one file input', () => {
     const c = container()
-    buildLoaderPanels([stub('X'), stub('Y')], c, noop)
+    buildLoaderPanels([stub('X'), stub('Y')], c, noop, "https://example.org/")
     const panels = c.querySelectorAll('.loader-dropzone')
     for (const panel of panels)
       expect(panel.querySelectorAll('input[type="file"]')).toHaveLength(1)
@@ -66,14 +66,14 @@ describe('buildLoaderPanels — file input', () => {
 
   it('file input has multiple attribute', () => {
     const c = container()
-    buildLoaderPanels([stub('M')], c, noop)
+    buildLoaderPanels([stub('M')], c, noop, "https://example.org/")
     const fi = c.querySelector<HTMLInputElement>('input[type="file"]')!
     expect(fi.multiple).toBe(true)
   })
 
   it('file input is hidden', () => {
     const c = container()
-    buildLoaderPanels([stub('H')], c, noop)
+    buildLoaderPanels([stub('H')], c, noop, "https://example.org/")
     const fi = c.querySelector<HTMLInputElement>('input[type="file"]')!
     expect(fi.style.display).toBe('none')
   })
@@ -83,7 +83,7 @@ describe('buildLoaderPanels — file input', () => {
 describe('buildLoaderPanels — hint text', () => {
   it('shows description when provided', () => {
     const c = container()
-    buildLoaderPanels([stub('X', ['.txt'], 'My custom description')], c, noop)
+    buildLoaderPanels([stub('X', ['.txt'], 'My custom description')], c, noop, "https://example.org/")
     expect(c.querySelector('.dropzone-hint')!.textContent).toBe('My custom description')
   })
 })
@@ -102,13 +102,13 @@ describe('buildLoaderPanels — callbacks', () => {
       async parse() { return { turtle: '', warnings: [], sheetsSeen: [], tripleCount: 0, timestamp: '', fileHash: '' } },
     }
 
-    buildLoaderPanels([loader], c, onTurtle)
+    buildLoaderPanels([loader], c, onTurtle, "https://example.org/")
     expect(received).toContain('turtle-data')
   })
 
   it('adds dragging class on dragover and removes on dragleave', () => {
     const c = container()
-    buildLoaderPanels([stub('Drag test')], c, noop)
+    buildLoaderPanels([stub('Drag test')], c, noop, "https://example.org/")
     const panel = c.querySelector('.loader-dropzone')!
 
     panel.dispatchEvent(Object.assign(new Event('dragover'), { preventDefault: () => {} }))
@@ -122,8 +122,8 @@ describe('buildLoaderPanels — callbacks', () => {
     const c = container()
     const loader = stub('Rebuild')
 
-    buildLoaderPanels([loader], c, noop)
-    buildLoaderPanels([loader], c, noop)  // rebuild — should replace, not append
+    buildLoaderPanels([loader], c, noop, "https://example.org/")
+    buildLoaderPanels([loader], c, noop, "https://example.org/")  // rebuild — should replace, not append
 
     expect(c.querySelectorAll('.loader-dropzone')).toHaveLength(1)
   })

@@ -15,7 +15,7 @@
 import './styles/main.css'
 import { parseTurtleToGraph, readHistory, pushHistory }    from './lib/graph-store'
 import { buildN3Store, runSparqlSelect }                   from './lib/sparql-runner'
-import { generateShEx, EX as EX_ns }                       from './lib/shex-validator'
+import { generateShEx }                                    from './lib/shex-validator'
 import { assignTypeColors }                                from './lib/color-scheme'
 import { buildRenderConfigJsonLd, parseRenderConfigJsonLd,
          normalisePrefixes }                               from './lib/render-config-jsonld'
@@ -328,9 +328,7 @@ restoreTheme()
 const loaderPanelContainer = document.getElementById('loader-panels')!
 
 function rebuildLoaderPanels(loaders: GraphSource[]): void {
-  buildLoaderPanels(loaders, loaderPanelContainer, handleTurtleFromLoader)
-  // Push the current baseIri to any newly registered loader that supports it
-  for (const loader of loaders) loader.setBaseIri?.(baseIri)
+  buildLoaderPanels(loaders, loaderPanelContainer, handleTurtleFromLoader, baseIri)
 }
 
 onLoadersChange(rebuildLoaderPanels)
@@ -443,8 +441,8 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
 
   try {
     const [parsed, store] = await Promise.all([
-      parseTurtleToGraph(turtle),
-      buildN3Store(turtle),
+      parseTurtleToGraph(turtle, baseIri),
+      buildN3Store(turtle, baseIri),
     ])
 
     if (parsed.parseErrors.length) {
@@ -519,8 +517,8 @@ function onTurtleEdited(text: string): void {
   turtleEditTimer = setTimeout(async () => {
     try {
       const [parsed, store] = await Promise.all([
-        parseTurtleToGraph(text),
-        buildN3Store(text),
+        parseTurtleToGraph(text, baseIri),
+        buildN3Store(text, baseIri),
       ])
       if (parsed.parseErrors.length) return
       n3Store   = store
@@ -896,7 +894,7 @@ function runSparql(): void {
   if (!n3Store) { toast('Load a file first', 'info'); return }
   const query = (document.getElementById('sparql-query') as HTMLTextAreaElement).value
   const t0    = performance.now()
-  const res   = runSparqlSelect(n3Store, query)
+  const res   = runSparqlSelect(n3Store, query, { ex: baseIri.replace(/\/$/, '#') })
   const ms    = (performance.now() - t0).toFixed(1)
   const out   = document.getElementById('sparql-results')!
   if (res.error) { out.innerHTML = `<div class="mono text-xs" style="color:var(--accent-rose);padding:12px">${esc(res.error)}</div>`; return }
@@ -927,7 +925,7 @@ function runSparql(): void {
 document.getElementById('btn-gen-shex')!.addEventListener('click', async () => {
   if (!currentTurtle) { toast('Load a file first', 'info'); return }
   toast('Generating ShEx\u2026', 'info')
-  try { shexEditor!.setValue(await generateShEx(currentTurtle)); toast('ShEx generated', 'success') }
+  try { shexEditor!.setValue(await generateShEx(currentTurtle, baseIri)); toast('ShEx generated', 'success') }
   catch (e) { toastError('ShEx generation failed', e) }
 })
 
@@ -1273,7 +1271,7 @@ function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 }
 function shorten(iri: string): string {
-  const all = { 'https://example.org/upload#':'ex','http://www.w3.org/2000/01/rdf-schema#':'rdfs','http://www.w3.org/1999/02/22-rdf-syntax-ns#':'rdf','http://www.w3.org/2001/XMLSchema#':'xsd','http://xmlns.com/foaf/0.1/':'foaf', ...prefixes }
+  const all = { [baseIri.replace(/\/$/, '#')]: 'ex', 'http://www.w3.org/2000/01/rdf-schema#':'rdfs','http://www.w3.org/1999/02/22-rdf-syntax-ns#':'rdf','http://www.w3.org/2001/XMLSchema#':'xsd','http://xmlns.com/foaf/0.1/':'foaf', ...prefixes }
   for (const [uri, pfx] of Object.entries(all)) if (iri.startsWith(uri)) return `${pfx}:${iri.slice(uri.length)}`
   const m = iri.match(/[/#]([^/#]+)$/); return m ? decodeURIComponent(m[1]) : iri
 }

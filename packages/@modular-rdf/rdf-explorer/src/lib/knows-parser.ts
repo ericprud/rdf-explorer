@@ -21,7 +21,7 @@
  *   • Unknown lines produce a warning and are skipped.
  */
 
-import type { GraphSource, ParseResult, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ParseResult, ApplyGraphCallback } from '@modular-rdf/graph-source-api'
 import { buildBasePanel } from './base-panel'
 
 const BASE    = 'https://example.org/knows#'
@@ -132,13 +132,13 @@ class KnowsLoader implements GraphSource {
 
   private baseIri    = BASE
   private lastText   = ''
-  private onChanged: TurtleChangedCallback = () => { /**/ }
+  private onChanged: ApplyGraphCallback = () => { /**/ }
 
-  buildPanel(container: HTMLElement, onTurtleChanged: TurtleChangedCallback): void {
-    this.onChanged = onTurtleChanged
+  buildPanel(container: HTMLElement, applyGraph: ApplyGraphCallback): void {
+    this.onChanged = applyGraph
     buildBasePanel(container, this, async (file) => {
       const result = await this.parse(await file.arrayBuffer())
-      onTurtleChanged(result.turtle)
+      applyGraph({ text: result.turtle, filename: result.timestamp })
     })
   }
 
@@ -146,7 +146,7 @@ class KnowsLoader implements GraphSource {
     this.baseIri = baseIri
     if (this.lastText) {
       const { triples, warnings: _ } = parseKnowsDsl(this.lastText)
-      this.onChanged(triplesToTurtle(triples, this.baseIri))
+      this.onChanged({ text: triplesToTurtle(triples, this.baseIri) })
     }
   }
 

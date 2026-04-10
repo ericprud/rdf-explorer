@@ -1,25 +1,95 @@
 /**
- * @modular-rdf/graph-source-api  (v4)
+ * @modular-rdf/graph-source-api  (v5)
  *
- * A GraphSource converts files to Turtle and optionally owns UI controls
+ * A GraphSource converts files to RDF and optionally owns UI controls
  * rendered inside its sidebar panel.
  *
- * TURTLE CALLBACK
- * ───────────────
+ * APPLY-GRAPH CALLBACK
+ * ────────────────────
  * After parsing, or when internal state changes (e.g. a vocab-toggle or a
- * base-IRI change), the loader calls `onTurtleChanged(turtle)`.
+ * base-IRI change), the source calls `applyGraph(input)` with either:
+ *   • `{ text, format?, filename? }` — Turtle or TriG source text; the host
+ *     handles parsing, prefix extraction, and fan-out to all panes.
+ *   • `{ store, ctx? }` — a pre-parsed RDF/JS dataset; the host uses `ctx`
+ *     for prefix/base context and serialises to text for text-wanting panes.
  *
  * BASE IRI
  * ────────
- * If a loader supports re-serialising with a different base IRI, it implements
+ * If a source supports re-serialising with a different base IRI, it implements
  * the optional `setBaseIri(iri)` method.  The host calls this whenever the
- * user changes the base IRI input.  The loader stores the IRI, re-runs its
- * last parse, and calls `onTurtleChanged` with the new output.
+ * user changes the base IRI input.
  *
  * PANEL ELEMENT
  * ─────────────
- * `buildPanel(container, onTurtleChanged)` is called once by the host.
+ * `buildPanel(container, applyGraph)` is called once by the host.
  */
+
+// ── Minimal structural RDF/JS types ─────────────────────────────────────────
+// Defined here so graph-source-api stays dependency-free.
+// N3.Store satisfies RdfDataset structurally.
+
+export interface RdfTerm {
+  readonly termType: string
+  readonly value:    string
+}
+
+export interface RdfQuad {
+  readonly subject:   RdfTerm
+  readonly predicate: RdfTerm
+  readonly object:    RdfTerm
+  readonly graph:     RdfTerm
+}
+
+/** Minimal RDF/JS DatasetCore interface. N3.Store satisfies this structurally. */
+export interface RdfDataset extends Iterable<RdfQuad> {
+  readonly size: number
+  match(
+    subject?:   RdfTerm | null,
+    predicate?: RdfTerm | null,
+    object?:    RdfTerm | null,
+    graph?:     RdfTerm | null,
+  ): Iterable<RdfQuad>
+}
+
+// ── Resolver context ─────────────────────────────────────────────────────────
+
+/**
+ * BASE and PREFIX declarations that accompany a pre-parsed RDF dataset.
+ * Analogous to what a Turtle parser would extract from the source text.
+ */
+export interface ResolverContext {
+  /** Base IRI for relative-IRI resolution (analogous to @base in Turtle). */
+  base?:     string
+  /** Prefix declarations: { prefixLabel → namespaceUri } */
+  prefixes?: Record<string, string>
+}
+
+// ── applyGraph input types ────────────────────────────────────────────────────
+
+/** Source delivers Turtle or TriG text; the host parses it. */
+export interface ApplyGraphText {
+  text:      string
+  format?:   'turtle' | 'trig'
+  /** Optional filename hint for the host UI (cache badge, download name). */
+  filename?: string
+}
+
+/** Source delivers a pre-parsed RDF/JS dataset. */
+export interface ApplyGraphStore {
+  store: RdfDataset
+  /** BASE and PREFIX context for label shortening and re-serialisation. */
+  ctx?:  ResolverContext
+}
+
+export type ApplyGraphInput = ApplyGraphText | ApplyGraphStore
+
+/**
+ * Callback the host supplies to each GraphSource.
+ * Call with text (Turtle/TriG) or a pre-parsed RDF/JS dataset.
+ */
+export type ApplyGraphCallback = (input: ApplyGraphInput) => void
+
+// ── ParseResult ───────────────────────────────────────────────────────────────
 
 export interface ParseResult {
   turtle:      string
@@ -30,8 +100,7 @@ export interface ParseResult {
   fileHash:    string
 }
 
-/** Callback the host supplies; called whenever the loader has new Turtle. */
-export type TurtleChangedCallback = (turtle: string) => void
+// ── GraphSource ───────────────────────────────────────────────────────────────
 
 export interface GraphSource {
   /** Short label shown as the drop-zone title. Required. */
@@ -45,37 +114,31 @@ export interface GraphSource {
 
   /**
    * Build the sidebar panel DOM inside `container`.
-   * Call `onTurtleChanged` after every parse and after any state change
-   * that produces new Turtle (vocab toggle, base IRI change, etc.).
-   * Called once per loader registration.
+   * Call `applyGraph` after every parse and after any state change that
+   * produces new RDF (vocab toggle, base IRI change, etc.).
+   * Called once per source registration.
    */
-  buildPanel(container: HTMLElement, onTurtleChanged: TurtleChangedCallback): void
+  buildPanel(container: HTMLElement, applyGraph: ApplyGraphCallback): void
 
   /**
    * Optional: parse a raw file buffer and return a ParseResult.
-   * Used by loader implementations and tests; not called by the host directly
-   * (the host calls buildPanel which wires up drag-drop / file-input).
+   * Used by source implementations and tests; not called by the host directly.
    */
   parse?(buffer: ArrayBuffer): Promise<ParseResult>
 
   /**
    * Optional: update the base IRI used for relative-IRI resolution and
-   * re-emit Turtle.  Called by the host when the user changes the base IRI.
-   * Loaders that do not implement this simply ignore base IRI changes.
+   * re-emit RDF.  Called by the host when the user changes the base IRI.
    */
   setBaseIri?(baseIri: string): void
 
   /**
    * Prefix map used to expand typeColors / typeRadii / hullFills keys.
    * Format: { prefixLabel: namespaceUri }
-   * e.g. { foaf: 'http://xmlns.com/foaf/0.1/', ex: 'https://example.org/knows#' }
    */
   prefixes?: Record<string, string>
 
-  /**
-   * Map from type IRI (or prefixed name / <iri>) to a CSS hex colour.
-   * e.g. { 'foaf:Person': '#4f9cf9', '<http://schema.org/Event>': '#f97316' }
-   */
+  /** Map from type IRI (or prefixed name / <iri>) to a CSS hex colour. */
   typeColors?: Record<string, string>
 
   /** Map from type IRI (or prefixed name / <iri>) to a node radius in pixels. */
@@ -84,4 +147,3 @@ export interface GraphSource {
   /** Map from type IRI (or prefixed name / <iri>) to a convex-hull CSS fill. */
   hullFills?: Record<string, string>
 }
-

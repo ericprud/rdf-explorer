@@ -7,37 +7,38 @@
  * ─────────
  * 1. The host calls `handler.mount(container)` once to render the pane's DOM.
  * 2. The host calls `handler.update(state)` whenever application state changes.
- * 3. If the user drops a .js file that exports a valid GraphHandler, the host
+ * 3. If the handler declares `updateText`, the host also calls it with the
+ *    current text form (Turtle/TriG) whenever it changes.
+ * 4. If the user drops a .js file that exports a valid GraphHandler, the host
  *    registers it and mounts it as a new pane tab.
  *
  * STATE
  * ─────
- * `HandlerState` is the read-only snapshot the host passes on each update.
- * Handlers must not mutate it.
+ * `HandlerState` carries only the pane-agnostic canonical fields.
+ * `turtle`, `graph` (D3), and `selectedTypes` (ShEx) are intentionally absent —
+ * they are internal state of specific built-in panes, not shared concerns.
  *
  * CALLBACKS
  * ─────────
  * `HandlerCallbacks` is the set of host-provided functions a handler may call
- * to trigger side-effects (navigation, Turtle edits, toasts, etc.).
+ * to trigger side-effects.  `applyGraph` mirrors the same callback type that
+ * GraphSources use, so any handler can push new RDF into the pipeline.
  */
 
-import type * as N3 from 'n3'
+import type { ApplyGraphInput, RdfDataset } from '@modular-rdf/graph-source-api'
+export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphStore,
+              RdfDataset, RdfTerm, RdfQuad, ResolverContext } from '@modular-rdf/graph-source-api'
 
 // ── Shared state snapshot ────────────────────────────────────────────────────
 
 /**
  * Read-only snapshot of the application state delivered on each update.
- *
- * Only the canonical, pane-agnostic fields are included:
- * - `store` is the parsed N3 quad store — the authoritative RDF representation.
- *   Handlers wanting triples, labels, or type info should read from it directly.
- * - `turtle`, `graph` (D3), and `selectedTypes` (ShEx) are intentionally absent:
- *   they are internal state of specific built-in panes, not shared concerns.
+ * Handlers must not mutate it.
  */
 export interface HandlerState {
-  /** Parsed N3 quad store (null until a valid Turtle has been loaded). */
-  store:      N3.Store | null
-  /** N3 prefix map from the parsed Turtle: { prefixLabel → namespaceUri }. */
+  /** Parsed RDF dataset (null until data has been loaded). N3.Store satisfies this. */
+  store:      RdfDataset | null
+  /** Prefix map from the parsed source: { prefixLabel → namespaceUri }. */
   prefixes:   Record<string, string>
   /** rdfs:label map: full IRI → label string. */
   rdfsLabels: Map<string, string>
@@ -52,8 +53,11 @@ export interface HandlerState {
 export interface HandlerCallbacks {
   /** Display a toast notification. */
   toast(message: string, kind?: 'info' | 'success' | 'error'): void
-  /** Replace the current Turtle with new content and re-run the pipeline. */
-  applyTurtle(turtle: string, filename?: string): void
+  /**
+   * Push new RDF into the host pipeline — identical to what a GraphSource
+   * calls.  Accepts Turtle/TriG text or a pre-parsed RDF/JS dataset.
+   */
+  applyGraph(input: ApplyGraphInput): void
   /** Switch the active pane tab by name (e.g. 'turtle', 'graph'). */
   switchTab(name: string): void
   /** Navigate the graph view to show a specific node. */
@@ -85,17 +89,19 @@ export interface GraphHandler {
   mount(container: HTMLElement, callbacks: HandlerCallbacks): void
 
   /**
-   * Called by the host whenever relevant application state changes:
-   * - A new Turtle file is loaded.
-   * - The user edits the Turtle source.
-   * - The base IRI changes.
-   * - The label mode changes.
-   *
-   * Handlers should re-render only the parts of their UI that depend on the
-   * changed state.  The host does NOT diff the state — it is the handler's
-   * responsibility to avoid unnecessary work.
+   * Called by the host whenever application state changes.
+   * Handlers should re-render only the parts of their UI that changed.
    */
   update(state: HandlerState): void
+
+  /**
+   * Optional: called by the host with the text form of the current RDF graph
+   * (Turtle or TriG) whenever it changes.
+   * If the source delivered an RDF/JS dataset, the host serialises to Turtle
+   * before calling this.
+   * Implement this to receive raw source text (e.g. a Turtle editor pane).
+   */
+  updateText?(text: string, format?: 'turtle' | 'trig'): void
 
   /**
    * Optional: called when the user switches to this pane's tab.
@@ -104,8 +110,7 @@ export interface GraphHandler {
   onActivate?(): void
 
   /**
-   * Optional: called when the handler is removed from the registry
-   * (e.g. user replaces it with an updated version).
+   * Optional: called when the handler is removed from the registry.
    * Use this to tear down timers, workers, etc.
    */
   destroy?(): void

@@ -31,7 +31,8 @@ import { getHandlers, onHandlersChange }                    from './lib/handler-
 import { registerBuiltinHandlers }                         from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
          updateExternalHandlers }                          from './lib/handler-panels'
-import type { GraphSource, ParseResult }                   from '@modular-rdf/graph-source-api'
+import type { GraphSource, ParseResult,
+              ApplyGraphCallback, ApplyGraphInput }         from '@modular-rdf/graph-source-api'
 import { inferTypes }                                      from './lib/type-inference'
 import type { GraphNode, GraphData }                       from './lib/graph-store'
 import * as N3                                             from 'n3'
@@ -343,7 +344,7 @@ restoreTheme()
 
   const handlerCallbacks = {
     toast,
-    applyTurtle: (turtle: string, filename?: string) => applyTurtle(turtle, filename),
+    applyGraph: (input: ApplyGraphInput) => handleApplyGraph(input),
     switchTab,
     showNode: (id: string) => graphView?.scrollToNode(id),
   }
@@ -369,23 +370,42 @@ restoreTheme()
 const loaderPanelContainer = document.getElementById('loader-panels')!
 
 function rebuildLoaderPanels(loaders: GraphSource[]): void {
-  buildLoaderPanels(loaders, loaderPanelContainer, handleTurtleFromLoader, baseIri)
+  buildLoaderPanels(loaders, loaderPanelContainer, handleApplyGraph, baseIri)
 }
 
 onLoadersChange(rebuildLoaderPanels)
 rebuildLoaderPanels(getLoaders())
 
 /**
- * Called by any loader whenever it has new or updated Turtle.
- * Single entry point — no loader-specific state lives in main.ts.
- * Also saves a revert snapshot for btn-revert-turtle.
+ * Unified entry point for all RDF input — from loaders, handler callbacks,
+ * or direct file drops.  Accepts Turtle/TriG text or a pre-parsed RDF dataset.
+ *
+ * Text path: parse → store + prefixes, keep text for the Turtle editor.
+ * Store path: use store directly, serialise to Turtle for text-wanting handlers.
  */
-function handleTurtleFromLoader(turtle: string, filename?: string): void {
-  if (currentTurtle) { prevTurtle = currentTurtle; prevFilename = currentFilename }
-  savedTurtle     = turtle          // revert target for btn-revert-turtle
-  currentTurtle   = turtle
-  currentFilename = filename ?? currentFilename
-  applyTurtle(turtle)
+function handleApplyGraph(input: ApplyGraphInput | string): void {
+  // Backward compat: loaders using the old TurtleChangedCallback(turtle: string) API.
+  if (typeof input === 'string') { input = { text: input }; }
+  if ('store' in input) {
+    // Pre-parsed dataset: serialise to Turtle so the Turtle editor has text.
+    const { store, ctx } = input
+    const writer = new N3.Writer({ prefixes: ctx?.prefixes ?? {} })
+    // N3.Store is Iterable<N3.Quad>; cast is safe since all callers use N3.
+    for (const q of store as Iterable<N3.Quad>) writer.addQuad(q)
+    writer.end((_err, turtle) => {
+      if (currentTurtle) { prevTurtle = currentTurtle; prevFilename = currentFilename }
+      savedTurtle   = turtle
+      currentTurtle = turtle
+      applyTurtle(turtle)
+    })
+  } else {
+    const { text, filename } = input
+    if (currentTurtle) { prevTurtle = currentTurtle; prevFilename = currentFilename }
+    savedTurtle     = text
+    currentTurtle   = text
+    currentFilename = filename ?? currentFilename
+    applyTurtle(text)
+  }
 }
 
 // ── load-title: drop target for .js loaders and .ttl Turtle ──────────────────
@@ -519,9 +539,11 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
     }
 
     // Notify external handlers (non-built-in panes) of updated state.
-    updateExternalHandlers(getHandlers(), {
-      store: n3Store, prefixes, rdfsLabels, baseIri, labelMode,
-    })
+    updateExternalHandlers(
+      getHandlers(),
+      { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
+      { text: turtle, format: 'turtle' },
+    )
   } catch (e) {
     toastError('Error applying Turtle', e)
   }

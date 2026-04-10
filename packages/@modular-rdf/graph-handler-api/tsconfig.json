@@ -2,7 +2,10 @@
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "paths": {
+      "@modular-rdf/graph-source-api": ["../graph-source-api/src/index.ts"]
+    }
   },
   "include": ["src"]
 }

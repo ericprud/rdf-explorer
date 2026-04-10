@@ -13,6 +13,7 @@
  */
 
 import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
+import type { ApplyGraphCallback } from '@modular-rdf/graph-source-api'
 import { loadHandlerFromBlob } from './handler-registry'
 
 // Names of panes that are built into the HTML skeleton — they already have
@@ -40,6 +41,8 @@ export function buildHandlerDropZone(
   callbacks: HandlerCallbacks,
   onToast:   (msg: string, kind?: 'info' | 'success' | 'error') => void,
   switchTab: (name: string) => void,
+  // kept for symmetry with buildLoaderPanels; unused until handler hot-reload
+  _applyGraph?: ApplyGraphCallback,
 ): HTMLElement {
   const zone = document.createElement('div')
   zone.id        = 'handler-drop-zone'
@@ -158,15 +161,21 @@ export function mountExternalHandler(
 
 /**
  * Push the latest application state to all external handlers.
- * Call this from main.ts after applyTurtle() and after any state change.
+ * Call this from main.ts after each graph update.
+ *
+ * @param text  Optional text form of the current graph.  If provided, any
+ *              handler that declares `updateText` will receive it.
  */
 export function updateExternalHandlers(
   handlers: GraphHandler[],
   state:    HandlerState,
+  text?:    { text: string; format?: 'turtle' | 'trig' },
 ): void {
   for (const h of handlers) {
-    if (!BUILTIN_PANE_NAMES.has(h.name)) {
-      try { h.update(state) } catch (e) { console.error(`[handler:${h.name}] update() threw`, e) }
+    if (BUILTIN_PANE_NAMES.has(h.name)) continue
+    try { h.update(state) } catch (e) { console.error(`[handler:${h.name}] update() threw`, e) }
+    if (text && h.updateText) {
+      try { h.updateText(text.text, text.format) } catch (e) { console.error(`[handler:${h.name}] updateText() threw`, e) }
     }
   }
 }

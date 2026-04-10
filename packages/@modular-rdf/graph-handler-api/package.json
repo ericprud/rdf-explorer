@@ -8,6 +8,9 @@
   },
   "types": "./src/index.ts",
   "files": ["src"],
+  "dependencies": {
+    "@modular-rdf/graph-source-api": "*"
+  },
   "publishConfig": {
     "access": "public"
   }

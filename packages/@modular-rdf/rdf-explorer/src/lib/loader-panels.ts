@@ -2,15 +2,15 @@
  * loader-panels.ts
  *
  * Hosts the per-loader sidebar panels.  Each GraphSource is responsible for
- * building its own panel DOM via `loader.buildPanel(container, onTurtleChanged)`.
+ * building its own panel DOM via `loader.buildPanel(container, applyGraph)`.
  * This module manages the container element and the registry-change subscription.
  */
 
-import type { GraphSource, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ApplyGraphCallback } from '@modular-rdf/graph-source-api'
 import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '../components/graph-view'
 import { resolveTypeKeys }                         from './resolve-type-keys'
 
-export type { TurtleChangedCallback }
+export type { ApplyGraphCallback }
 
 /**
  * (Re)build all loader panels inside `container`.
@@ -18,14 +18,14 @@ export type { TurtleChangedCallback }
  * For each loader, creates a wrapper div, calls `loader.buildPanel()`, then
  * immediately pushes `baseIri` via `loader.setBaseIri()` so the panel starts
  * with the same base IRI that main.ts is currently using.
- * `onTurtleChanged` is forwarded to each loader so they can notify the host
- * when their turtle output changes.
+ * `applyGraph` is forwarded to each loader so they can notify the host
+ * when their RDF output changes.
  */
 export function buildLoaderPanels(
-  loaders:          GraphSource[],
-  container:        HTMLElement,
-  onTurtleChanged:  TurtleChangedCallback,
-  baseIri:          string,
+  loaders:     GraphSource[],
+  container:   HTMLElement,
+  applyGraph:  ApplyGraphCallback,
+  baseIri:     string,
 ): void {
   container.innerHTML = ''
 
@@ -44,7 +44,7 @@ export function buildLoaderPanels(
     wrapper.setAttribute('data-loader-name', loader.name)
     container.appendChild(wrapper)
     // Delegate all DOM construction (drop-zone, controls) to the loader itself
-    loader.buildPanel(wrapper, onTurtleChanged)
+    loader.buildPanel(wrapper, applyGraph)
     loader.setBaseIri?.(baseIri)
     const pfx = loader.prefixes ?? {}
     if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, pfx))

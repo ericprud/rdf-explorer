@@ -4,10 +4,10 @@
  * Run with: npx vitest run
  * Requires jsdom environment (see vitest.workspace.ts).
  */
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { buildLoaderPanels } from '../../loader-panels'
 import { buildBasePanel }    from '../../base-panel'
-import type { GraphSource, TurtleChangedCallback } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ApplyGraphCallback, ApplyGraphInput } from '@modular-rdf/graph-source-api'
 
 // ── Stub loader factory ───────────────────────────────────────────────────────
 function stub(name: string, exts: string[] = ['.txt'], desc?: string): GraphSource {
@@ -15,10 +15,10 @@ function stub(name: string, exts: string[] = ['.txt'], desc?: string): GraphSour
     name,
     description: desc,
     accepts: exts,
-    buildPanel(container: HTMLElement, onTurtleChanged: TurtleChangedCallback) {
+    buildPanel(container: HTMLElement, applyGraph: ApplyGraphCallback) {
       buildBasePanel(container, this, async (file) => {
         const text = await file.text()
-        onTurtleChanged(text)
+        applyGraph({ text })
       })
     },
     async parse() {
@@ -29,7 +29,7 @@ function stub(name: string, exts: string[] = ['.txt'], desc?: string): GraphSour
 
 function container(): HTMLDivElement { return document.createElement('div') }
 
-const noop: TurtleChangedCallback = () => {}
+const noop: ApplyGraphCallback = () => {}
 
 // ── buildLoaderPanels — structure ─────────────────────────────────────────────
 describe('buildLoaderPanels — structure', () => {
@@ -90,20 +90,21 @@ describe('buildLoaderPanels — hint text', () => {
 
 // ── buildLoaderPanels — callbacks ─────────────────────────────────────────────
 describe('buildLoaderPanels — callbacks', () => {
-  it('forwards onTurtleChanged to each loader panel', () => {
+  it('forwards applyGraph to each loader panel', () => {
     const c = container()
-    const received: string[] = []
-    const onTurtle: TurtleChangedCallback = (t) => received.push(t)
+    const received: ApplyGraphInput[] = []
+    const cb: ApplyGraphCallback = (input) => received.push(input)
 
-    // Loader with a buildPanel that immediately calls onTurtleChanged
+    // Loader with a buildPanel that immediately calls applyGraph
     const loader: GraphSource = {
       name: 'Immediate', accepts: ['.txt'],
-      buildPanel(_container, cb) { cb('turtle-data') },
+      buildPanel(_container, applyGraph) { applyGraph({ text: 'turtle-data' }) },
       async parse() { return { turtle: '', warnings: [], sheetsSeen: [], tripleCount: 0, timestamp: '', fileHash: '' } },
     }
 
-    buildLoaderPanels([loader], c, onTurtle, "https://example.org/")
-    expect(received).toContain('turtle-data')
+    buildLoaderPanels([loader], c, cb, "https://example.org/")
+    expect(received).toHaveLength(1)
+    expect((received[0] as { text: string }).text).toBe('turtle-data')
   })
 
   it('adds dragging class on dragover and removes on dragleave', () => {

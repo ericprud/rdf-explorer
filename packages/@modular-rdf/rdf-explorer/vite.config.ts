@@ -16,7 +16,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
-      '@modular-rdf/graph-source-api': resolve(__dirname, '../graph-source-api/src/index.ts'),
+      '@modular-rdf/graph-source-api':  resolve(__dirname, '../graph-source-api/src/index.ts'),
+      '@modular-rdf/graph-handler-api': resolve(__dirname, '../graph-handler-api/src/index.ts'),
     }
   },
   server: {

@@ -27,6 +27,10 @@ import { ShExWorkerClient }                                from './lib/shex-work
 import { getLoaders, loadLoaderFromBlob, onLoadersChange } from './lib/parser-registry'
 import { buildLoaderPanels }                               from './lib/loader-panels'
 import { resolveTypeKeys }                                 from './lib/resolve-type-keys'
+import { getHandlers, onHandlersChange }                    from './lib/handler-registry'
+import { registerBuiltinHandlers }                         from './lib/handler-config'
+import { buildHandlerDropZone, mountExternalHandler,
+         updateExternalHandlers }                          from './lib/handler-panels'
 import type { GraphSource, ParseResult }                   from '@modular-rdf/graph-source-api'
 import { inferTypes }                                      from './lib/type-inference'
 import type { GraphNode, GraphData }                       from './lib/graph-store'
@@ -37,6 +41,11 @@ import { labelIri, LABEL_MODES, LABEL_MODE_NAMES,
 // ── Dev: pre-register loaders.  Remove for production. ───────────────────────
 import { registerDevLoaders } from './lib/loader-config'
 registerDevLoaders()
+
+// ── Register built-in pane handlers ──────────────────────────────────────────
+// Replace BUILTIN_HANDLERS list in handler-config.ts to customise which panes
+// are shown, or call registerHandler() to add extra panes at runtime.
+registerBuiltinHandlers()
 
 // ── Preference constants ────────────────────────────────────────────────────
 // These will eventually be exposed in a preferences pane.  For now they are
@@ -145,6 +154,8 @@ document.querySelector('#app')!.innerHTML = `
       <div class="tab" data-tab="shex">ShEx</div>
       <div class="tab" data-tab="inference">Type Inference</div>
       <div class="tab" data-tab="diff" id="diff-tab" style="display:none">Diff</div>
+      <div class="tab-spacer"></div>
+      <div id="handler-drop-zone-placeholder"></div>
     </div>
 
     <div class="tab-content">
@@ -324,6 +335,36 @@ shexEditor   = new ShExEditor(document.getElementById('shex-editor-container')!)
 restoreCacheBadge()
 restoreTheme()
 
+// ── Handler drop zone ─────────────────────────────────────────────────────────
+{
+  const tabsEl    = document.getElementById('tabs')!
+  const contentEl = document.querySelector<HTMLElement>('.tab-content')!
+  const placeholder = document.getElementById('handler-drop-zone-placeholder')!
+
+  const handlerCallbacks = {
+    toast,
+    applyTurtle: (turtle: string, filename?: string) => applyTurtle(turtle, filename),
+    switchTab,
+    showNode: (id: string) => graphView?.scrollToNode(id),
+  }
+
+  const dropZone = buildHandlerDropZone(
+    tabsEl, contentEl,
+    handlerCallbacks,
+    toast,
+    switchTab,
+  )
+  placeholder.replaceWith(dropZone)
+
+  // When a new handler is registered, mount it if it's external (non-built-in).
+  onHandlersChange(handlers => {
+    for (const h of handlers) {
+      mountExternalHandler(h, tabsEl, contentEl, handlerCallbacks, switchTab)
+    }
+  })
+
+}
+
 // ── Loader panels ─────────────────────────────────────────────────────────────
 const loaderPanelContainer = document.getElementById('loader-panels')!
 
@@ -476,6 +517,11 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
       document.getElementById('diff-tab')!.style.display = ''
       renderDiff()
     }
+
+    // Notify external handlers (non-built-in panes) of updated state.
+    updateExternalHandlers(getHandlers(), {
+      store: n3Store, prefixes, rdfsLabels, baseIri, labelMode,
+    })
   } catch (e) {
     toastError('Error applying Turtle', e)
   }

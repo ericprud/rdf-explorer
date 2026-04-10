@@ -787,3 +787,62 @@ html.light-mode .base-iri-input {
   background: var(--bg-elevated);
   color:      var(--text-secondary);
 }
+
+/* ── Handler drop zone ────────────────────────────────────────────────────── */
+/*
+ * Lives inside the .tabs bar, pushed to the right by .tab-spacer.
+ * Normally shows a subtle "⊕ handler" hint; becomes prominent on hover/drag.
+ */
+.tab-spacer { flex: 1; }
+
+.handler-drop-zone {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  border-radius: var(--radius);
+  margin: 4px 0;
+  border: 1px dashed transparent;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+.handler-drop-zone:hover {
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+
+.handler-drop-zone.drag-over {
+  color: var(--accent-teal);
+  background: rgba(20,184,166,0.08);
+  border-color: var(--accent-teal);
+}
+
+.handler-drop-icon {
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.handler-drop-zone:hover .handler-drop-icon,
+.handler-drop-zone.drag-over .handler-drop-icon {
+  opacity: 1;
+}
+
+.handler-drop-label {
+  opacity: 0;
+  font-size: 9px;
+  letter-spacing: 0.05em;
+  transition: opacity 0.15s;
+}
+
+.handler-drop-zone:hover .handler-drop-label,
+.handler-drop-zone.drag-over .handler-drop-label {
+  opacity: 0.8;
+}

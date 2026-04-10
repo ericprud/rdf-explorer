@@ -16,7 +16,8 @@
       "@/*": ["./src/*"],
       "@shexjs/parser":              ["./src/types/shexjs"],
       "@shexjs/validator":           ["./src/types/shexjs"],
-      "@modular-rdf/graph-source-api":      ["../graph-source-api/src/index.ts"]
+      "@modular-rdf/graph-source-api":  ["../graph-source-api/src/index.ts"],
+      "@modular-rdf/graph-handler-api": ["../graph-handler-api/src/index.ts"]
     }
   },
   "include": ["src"],

@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "packages/@modular-rdf/graph-source-api" },
+    { "path": "packages/@modular-rdf/graph-handler-api" },
     { "path": "packages/@modular-rdf/rdf-explorer" }
   ]
 }

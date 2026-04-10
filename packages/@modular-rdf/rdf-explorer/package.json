@@ -27,6 +27,7 @@
     "codemirror-lang-turtle": "^0.0.2",
     "d3": "^7.9.0",
     "@modular-rdf/graph-source-api": "*",
+    "@modular-rdf/graph-handler-api": "*",
     "n3": "^1.22.0"
   },
   "devDependencies": {

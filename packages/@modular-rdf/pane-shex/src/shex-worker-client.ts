@@ -72,9 +72,9 @@ export class ShExWorkerClient {
         break
 
       case 'aborted':
-        // Reject all pending validate promises
-        for (const { reject } of this.pending.values())
-          reject(new Error('aborted'))
+        // Resolve (not reject) so the onValidate loop can handle gracefully
+        for (const { resolve } of this.pending.values())
+          resolve({ passed: false, elapsed: 0, errors: ['aborted'] })
         this.pending.clear()
         break
 
@@ -126,6 +126,14 @@ export class ShExWorkerClient {
 
   /** Hard-kill the worker (use when navigating away or replacing it). */
   terminate(): void {
+    // Settle any in-flight promises so callers don't hang or produce unhandled rejections.
+    if (this.initRej) {
+      this.initRej(new Error('worker terminated'))
+      this.initRes = null; this.initRej = null
+    }
+    for (const { resolve } of this.pending.values())
+      resolve({ passed: false, elapsed: 0, errors: ['aborted'] })
+    this.pending.clear()
     this.worker.terminate()
   }
 }

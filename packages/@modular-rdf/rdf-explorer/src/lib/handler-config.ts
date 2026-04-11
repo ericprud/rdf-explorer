@@ -2,17 +2,16 @@
  * handler-config.ts
  *
  * Lists the built-in pane handlers pre-registered at startup.
- * The built-in handlers are lightweight adapters: they do not own their DOM
- * (the HTML skeleton in main.ts does), but they implement the GraphHandler
- * interface so external code can discover and interact with them.
  *
- * To replace a built-in pane, register a GraphHandler with the same `name`
- * via the drop area or via registerHandler() — the registry will call
- * destroy() on the old handler and swap in the new one.
+ * graph, turtle, shex: still managed by main.ts stubs (DOM in HTML template).
+ * sparql, inference: fully extracted — real handlers from their own packages.
+ *   main.ts calls handler.mount(paneEl, callbacks) explicitly for these two.
  */
 
 import { registerHandler } from './handler-registry'
 import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
+import { handler as sparqlHandlerImpl    } from '@modular-rdf/pane-sparql'
+import { handler as inferenceHandlerImpl } from '@modular-rdf/pane-inference'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,19 +27,20 @@ function makeBuiltin(name: string, label: string): GraphHandler {
     },
     update(_state: HandlerState): void {
       // Built-in panes are updated directly by main.ts (applyTurtle, etc.).
-      // External code can override this by registering a replacement handler.
       void _callbacks
     },
   }
 }
 
-// ── Built-in pane stubs ───────────────────────────────────────────────────────
+// ── Built-in pane handlers ────────────────────────────────────────────────────
 
-export const graphHandler:     GraphHandler = makeBuiltin('graph',     'Graph')
-export const turtleHandler:    GraphHandler = makeBuiltin('turtle',    'Turtle')
-export const sparqlHandler:    GraphHandler = makeBuiltin('sparql',    'SPARQL')
-export const shexHandler:      GraphHandler = makeBuiltin('shex',      'ShEx')
-export const inferenceHandler: GraphHandler = makeBuiltin('inference', 'Type Inference')
+export const graphHandler:     GraphHandler = makeBuiltin('graph',  'Graph')
+export const turtleHandler:    GraphHandler = makeBuiltin('turtle', 'Turtle')
+export const shexHandler:      GraphHandler = makeBuiltin('shex',   'ShEx')
+
+// Fully extracted handlers — real implementations from their own packages.
+export const sparqlHandler:    GraphHandler = sparqlHandlerImpl
+export const inferenceHandler: GraphHandler = inferenceHandlerImpl
 
 /** The ordered list of panes shown at startup. */
 export const BUILTIN_HANDLERS: GraphHandler[] = [
@@ -54,8 +54,6 @@ export const BUILTIN_HANDLERS: GraphHandler[] = [
 /**
  * Register all built-in handlers.
  * Called once at startup by main.ts.
- * Callers can substitute their own list before calling this to customise
- * which panes are shown (e.g. remove ShEx, add a custom SPARQL editor).
  */
 export function registerBuiltinHandlers(
   handlers: GraphHandler[] = BUILTIN_HANDLERS,

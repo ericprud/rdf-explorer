@@ -18,6 +18,9 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
       '@modular-rdf/graph-source-api':  resolve(__dirname, '../graph-source-api/src/index.ts'),
       '@modular-rdf/graph-handler-api': resolve(__dirname, '../graph-handler-api/src/index.ts'),
+      '@modular-rdf/rdf-utils':         resolve(__dirname, '../rdf-utils/src/index.ts'),
+      '@modular-rdf/pane-sparql':       resolve(__dirname, '../pane-sparql/src/index.ts'),
+      '@modular-rdf/pane-inference':    resolve(__dirname, '../pane-inference/src/index.ts'),
     }
   },
   server: {

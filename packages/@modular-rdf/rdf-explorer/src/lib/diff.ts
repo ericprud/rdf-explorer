@@ -2,7 +2,7 @@
  * Turtle Diff – triple-level comparison of two Turtle documents
  */
 import * as N3 from 'n3'
-import { parseTurtle } from './n3-parse'
+import { parseTurtle } from '@modular-rdf/rdf-utils'
 
 export interface TripleDiff {
   added:     N3.Quad[]

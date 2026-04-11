@@ -14,7 +14,7 @@
  */
 import './styles/main.css'
 import { parseTurtleToGraph, readHistory, pushHistory }    from './lib/graph-store'
-import { buildN3Store, runSparqlSelect }                   from './lib/sparql-runner'
+import { buildN3Store }                                     from './lib/sparql-runner'
 import { generateShEx }                                    from './lib/shex-validator'
 import { assignTypeColors }                                from './lib/color-scheme'
 import { buildRenderConfigJsonLd, parseRenderConfigJsonLd,
@@ -26,18 +26,17 @@ import { ShExEditor }                                      from './components/sh
 import { ShExWorkerClient }                                from './lib/shex-worker-client'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange } from './lib/parser-registry'
 import { buildLoaderPanels }                               from './lib/loader-panels'
-import { resolveTypeKeys }                                 from './lib/resolve-type-keys'
+import { resolveTypeKeys }                                 from '@modular-rdf/rdf-utils'
 import { getHandlers, onHandlersChange }                    from './lib/handler-registry'
 import { registerBuiltinHandlers }                         from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
          updateExternalHandlers }                          from './lib/handler-panels'
 import type { GraphSource, ParseResult,
               ApplyGraphCallback, ApplyGraphInput }         from '@modular-rdf/graph-source-api'
-import { inferTypes }                                      from './lib/type-inference'
 import type { GraphNode, GraphData }                       from './lib/graph-store'
 import * as N3                                             from 'n3'
 import { labelIri, LABEL_MODES, LABEL_MODE_NAMES,
-         SEGMENT_SEP, type LabelMode }                     from './lib/label-mode'
+         SEGMENT_SEP, type LabelMode }                     from '@modular-rdf/rdf-utils'
 
 // ── Dev: pre-register loaders.  Remove for production. ───────────────────────
 import { registerDevLoaders } from './lib/loader-config'
@@ -206,25 +205,8 @@ document.querySelector('#app')!.innerHTML = `
         <div id="turtle-container" class="pane-scroll-host"></div>
       </div>
 
-      <!-- SPARQL -->
-      <div class="pane" data-pane="sparql">
-        <div class="sparql-pane">
-          <div class="sparql-editor-wrap">
-            <div class="pane-toolbar flex-row">
-              <span class="mono text-xs text-muted grow">SPARQL SELECT &middot; Ctrl+Enter to run</span>
-              <button class="btn sm primary" id="btn-run-sparql">&#x25B6; Run</button>
-            </div>
-            <textarea class="sparql-textarea" id="sparql-query" spellcheck="false">SELECT ?s ?p ?o
-WHERE {
-  ?s ?p ?o .
-}
-LIMIT 50</textarea>
-          </div>
-          <div class="sparql-results pane-scroll-host" id="sparql-results">
-            <div class="mono text-xs text-muted" style="padding:12px">Run a query to see results.</div>
-          </div>
-        </div>
-      </div>
+      <!-- SPARQL (DOM built by @modular-rdf/pane-sparql handler) -->
+      <div class="pane" data-pane="sparql"></div>
 
       <!-- ShEx -->
       <div class="pane" data-pane="shex">
@@ -247,18 +229,8 @@ LIMIT 50</textarea>
         </div>
       </div>
 
-      <!-- Type Inference -->
-      <div class="pane" data-pane="inference">
-        <div class="pane-toolbar flex-row">
-          <span class="mono text-xs text-muted grow">Plain-string literals that look like typed values</span>
-          <button class="btn sm primary" id="btn-run-inference">Analyse</button>
-        </div>
-        <ul class="inference-list pane-scroll-host" id="inference-list">
-          <li style="color:var(--text-muted);font-family:var(--font-mono);font-size:11px;padding:12px;">
-            Load a file then click Analyse.
-          </li>
-        </ul>
-      </div>
+      <!-- Type Inference (DOM built by @modular-rdf/pane-inference handler) -->
+      <div class="pane" data-pane="inference"></div>
 
       <!-- Diff -->
       <div class="pane" data-pane="diff">
@@ -337,17 +309,17 @@ restoreCacheBadge()
 restoreTheme()
 
 // ── Handler drop zone ─────────────────────────────────────────────────────────
+const handlerCallbacks = {
+  toast,
+  applyGraph: (input: ApplyGraphInput) => handleApplyGraph(input),
+  switchTab,
+  showNode: (id: string) => graphView?.scrollToNode(id),
+}
+
 {
   const tabsEl    = document.getElementById('tabs')!
   const contentEl = document.querySelector<HTMLElement>('.tab-content')!
   const placeholder = document.getElementById('handler-drop-zone-placeholder')!
-
-  const handlerCallbacks = {
-    toast,
-    applyGraph: (input: ApplyGraphInput) => handleApplyGraph(input),
-    switchTab,
-    showNode: (id: string) => graphView?.scrollToNode(id),
-  }
 
   const dropZone = buildHandlerDropZone(
     tabsEl, contentEl,
@@ -363,8 +335,17 @@ restoreTheme()
       mountExternalHandler(h, tabsEl, contentEl, handlerCallbacks, switchTab)
     }
   })
-
 }
+
+// ── Mount extracted built-in handlers into their pre-existing pane divs ───────
+// Panes whose DOM is fully owned by their handler package (not in the HTML template).
+;['sparql', 'inference'].forEach(name => {
+  const h = getHandlers().find(x => x.name === name)
+  if (h) {
+    const paneEl = document.querySelector<HTMLElement>(`[data-pane="${name}"]`)!
+    h.mount(paneEl, handlerCallbacks)
+  }
+})
 
 // ── Loader panels ─────────────────────────────────────────────────────────────
 const loaderPanelContainer = document.getElementById('loader-panels')!
@@ -953,42 +934,6 @@ document.getElementById('nd-expand-btn')!.addEventListener('click', () => {
 document.getElementById('nd-close')!.addEventListener('click', () =>
   document.getElementById('node-detail')!.classList.remove('visible'))
 
-// ── SPARQL ────────────────────────────────────────────────────────────────────
-document.getElementById('btn-run-sparql')!.addEventListener('click', runSparql)
-document.getElementById('sparql-query')!.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runSparql() }
-})
-function runSparql(): void {
-  if (!n3Store) { toast('Load a file first', 'info'); return }
-  const query = (document.getElementById('sparql-query') as HTMLTextAreaElement).value
-  const t0    = performance.now()
-  const res   = runSparqlSelect(n3Store, query, { ex: baseIri.replace(/\/$/, '#') })
-  const ms    = (performance.now() - t0).toFixed(1)
-  const out   = document.getElementById('sparql-results')!
-  if (res.error) { out.innerHTML = `<div class="mono text-xs" style="color:var(--accent-rose);padding:12px">${esc(res.error)}</div>`; return }
-  if (!res.bindings.length) { out.innerHTML = `<div class="mono text-xs text-muted" style="padding:12px">No results (${ms}ms).</div>`; return }
-  let html = `<div class="mono text-xs text-muted" style="padding:4px 12px 6px">${res.bindings.length} result(s) \u00B7 ${ms}ms</div><table class="result-table"><thead><tr>`
-  for (const v of res.variables) html += `<th>${esc(v)}</th>`
-  html += '</tr></thead><tbody>'
-  for (const row of res.bindings) {
-    html += '<tr>'
-    for (const v of res.variables) {
-      const val = row[v] ?? '', short = val.length > 80 ? shorten(val) : val
-      html += `<td title="${esc(val)}">${esc(short)}</td>`
-    }
-    html += '</tr>'
-  }
-  out.innerHTML = html + '</tbody></table>'
-  out.querySelectorAll<HTMLElement>('td').forEach(td => {
-    const full = td.title
-    if (full && graphData?.nodes.some(n => n.id === full)) {
-      td.style.cursor = 'pointer'; td.style.color = 'var(--accent-teal)'
-      td.addEventListener('click', () => graphView?.scrollToNode(full))
-    }
-  })
-  toast(`${res.bindings.length} results`, 'success')
-}
-
 // ── ShEx: Generate ────────────────────────────────────────────────────────────
 document.getElementById('btn-gen-shex')!.addEventListener('click', async () => {
   if (!currentTurtle) { toast('Load a file first', 'info'); return }
@@ -1130,26 +1075,6 @@ function finishValidation(): void {
   validationRunning = false; if (shexWorker) { shexWorker.terminate(); shexWorker = null }
   validateBtn.textContent = 'Validate'; validateBtn.classList.remove('danger'); validateBtn.classList.add('primary')
 }
-
-// ── Type Inference ────────────────────────────────────────────────────────────
-document.getElementById('btn-run-inference')!.addEventListener('click', async () => {
-  if (!currentTurtle) { toast('Load a file first', 'info'); return }
-  toast('Analysing\u2026', 'info')
-  const suggestions = await inferTypes(currentTurtle)
-  const list = document.getElementById('inference-list')!
-  if (!suggestions.length) {
-    list.innerHTML = `<li style="color:var(--text-muted);font-family:var(--font-mono);font-size:11px;padding:12px;">No suggestions.</li>`
-    toast('No type issues found', 'success'); return
-  }
-  list.innerHTML = suggestions.map(s => `
-    <li class="inference-item">
-      <div class="inference-subject">${esc(shorten(s.subject))}</div>
-      <div class="inference-value"><span class="text-muted">${esc(shorten(s.predicate))}</span>&nbsp;<strong>"${esc(s.value)}"</strong></div>
-      <div class="inference-type">detected as: <strong>${esc(s.pattern)}</strong></div>
-      <div class="inference-fix">&rarr; ${esc(s.fix)}</div>
-    </li>`).join('')
-  toast(`${suggestions.length} suggestion(s)`, 'info')
-})
 
 // ── Diff ──────────────────────────────────────────────────────────────────────
 async function renderDiff(): Promise<void> {

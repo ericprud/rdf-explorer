@@ -2,7 +2,7 @@
  * Graph Store – parse Turtle with N3, manage graph data + URL-hash history
  */
 import * as N3 from 'n3'
-import { parseTurtle } from './n3-parse'
+import { parseTurtle } from '@modular-rdf/rdf-utils'
 
 export interface GraphNode {
   id:        string
@@ -181,28 +181,7 @@ export async function parseTurtleToGraph(
 }
 
 // ── URL-hash view-state ─────────────────────────────────────────────────────
-
-export interface ViewState {
-  regex:    string
-  pinned:   string[]
-  expanded: string[]
-  group:    string
-}
-
-export function encodeViewState(vs: ViewState): string {
-  try { return btoa(encodeURIComponent(JSON.stringify(vs))) } catch { return '' }
-}
-
-export function decodeViewState(hash: string): ViewState | null {
-  try { return JSON.parse(decodeURIComponent(atob(hash))) as ViewState } catch { return null }
-}
-
-export function pushHistory(vs: ViewState): void {
-  const enc = encodeViewState(vs)
-  if (enc && location.hash.slice(1) !== enc) history.pushState(null, '', '#' + enc)
-}
-
-export function readHistory(): ViewState {
-  return decodeViewState(location.hash.slice(1)) ??
-    { regex: '', pinned: [], expanded: [], group: 'type' }
-}
+// Canonical implementations live in @modular-rdf/rdf-utils; re-exported here
+// so callers (main.ts) continue to import from a single graph-store import.
+export type { ViewState } from '@modular-rdf/rdf-utils'
+export { pushHistory, readHistory } from '@modular-rdf/rdf-utils'

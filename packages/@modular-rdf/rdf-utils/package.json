@@ -1,0 +1,20 @@
+{
+  "name": "@modular-rdf/rdf-utils",
+  "version": "0.1.0",
+  "description": "Shared RDF parsing and labelling utilities for the modular-rdf toolkit",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": ["src"],
+  "dependencies": {
+    "n3": "*"
+  },
+  "devDependencies": {
+    "@types/n3": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

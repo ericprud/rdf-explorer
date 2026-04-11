@@ -6,7 +6,7 @@
  * shortening so the output mirrors the prefixes the user already chose.
  */
 import * as N3 from 'n3'
-import { parseTurtle, parseIntoStore } from './n3-parse'
+import { parseTurtle, parseIntoStore } from '@modular-rdf/rdf-utils'
 
 export interface ValidationResult {
   nodeId:  string

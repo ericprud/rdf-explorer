@@ -3,6 +3,9 @@
   "references": [
     { "path": "packages/@modular-rdf/graph-source-api" },
     { "path": "packages/@modular-rdf/graph-handler-api" },
+    { "path": "packages/@modular-rdf/rdf-utils" },
+    { "path": "packages/@modular-rdf/pane-sparql" },
+    { "path": "packages/@modular-rdf/pane-inference" },
     { "path": "packages/@modular-rdf/rdf-explorer" }
   ]
 }

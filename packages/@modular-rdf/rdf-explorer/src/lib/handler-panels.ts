@@ -16,12 +16,6 @@ import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/
 import type { ApplyGraphCallback } from '@modular-rdf/graph-source-api'
 import { loadHandlerFromBlob } from './handler-registry'
 
-// Names of panes that are built into the HTML skeleton — they already have
-// a tab and a pane div; we must not create duplicates.
-const BUILTIN_PANE_NAMES = new Set(['graph', 'turtle', 'sparql', 'shex', 'inference', 'diff'])
-
-// Track which external handlers have already had a tab+pane created.
-const mountedExternalHandlers = new Map<string, HTMLElement>()
 
 // ── Drop zone ─────────────────────────────────────────────────────────────────
 
@@ -122,37 +116,34 @@ export function mountExternalHandler(
   callbacks: HandlerCallbacks,
   switchTab: (name: string) => void,
 ): void {
-  if (BUILTIN_PANE_NAMES.has(handler.name)) return  // built-in — host owns the DOM
-
   const label = handler.label ?? handler.name
 
-  // Re-use existing container if the handler was previously mounted
-  let paneEl = mountedExternalHandlers.get(handler.name)
-  if (!paneEl) {
-    // Create pane div
-    paneEl = document.createElement('div')
-    paneEl.className  = 'pane'
-    paneEl.dataset.pane = handler.name
-    contentEl.appendChild(paneEl)
-    mountedExternalHandlers.set(handler.name, paneEl)
-
-    // Create tab button
-    const tabEl = document.createElement('div')
-    tabEl.className   = 'tab'
-    tabEl.dataset.tab = handler.name
-    tabEl.textContent = label
-    tabEl.addEventListener('click', () => switchTab(handler.name))
-    // Insert before the hidden diff tab (last item) if present, otherwise append
-    const diffTab = tabsEl.querySelector<HTMLElement>('[data-tab="diff"]')
-    if (diffTab) tabsEl.insertBefore(tabEl, diffTab)
-    else         tabsEl.appendChild(tabEl)
-  } else {
-    // Hot-swap: clear the container so the new handler gets a fresh mount
-    paneEl.innerHTML = ''
-    // Update tab label in case it changed
+  // If a pane already exists (created by config or a prior mount), hot-swap it.
+  const existingPane = contentEl.querySelector<HTMLElement>(`[data-pane="${handler.name}"]`)
+  if (existingPane) {
+    existingPane.innerHTML = ''
     const tabEl = tabsEl.querySelector<HTMLElement>(`[data-tab="${handler.name}"]`)
     if (tabEl) tabEl.textContent = label
+    handler.mount(existingPane, callbacks)
+    return
   }
+
+  // Truly new handler: create tab + pane.
+  const paneEl = document.createElement('div')
+  paneEl.className   = 'pane'
+  paneEl.dataset.pane = handler.name
+  contentEl.appendChild(paneEl)
+
+  const tabEl = document.createElement('div')
+  tabEl.className   = 'tab'
+  tabEl.dataset.tab = handler.name
+  tabEl.textContent = label
+  tabEl.addEventListener('click', () => switchTab(handler.name))
+  // Insert before the diff tab if present, else before the spacer, else append.
+  const anchor = tabsEl.querySelector<HTMLElement>('[data-tab="diff"]')
+               ?? tabsEl.querySelector<HTMLElement>('.tab-spacer')
+  if (anchor) tabsEl.insertBefore(tabEl, anchor)
+  else        tabsEl.appendChild(tabEl)
 
   handler.mount(paneEl, callbacks)
 }

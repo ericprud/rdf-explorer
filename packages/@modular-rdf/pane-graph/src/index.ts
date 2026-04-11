@@ -130,6 +130,7 @@ class GraphPaneHandler implements GraphHandler {
       msgOn: string, msgOff: string,
     ) => {
       const el = btn(key)
+      el.classList.toggle('active', getState())   // sync initial state from model
       el.addEventListener('click', () => {
         if (!this.graphView) return
         const now = doToggle()

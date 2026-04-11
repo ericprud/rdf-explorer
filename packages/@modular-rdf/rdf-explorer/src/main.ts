@@ -11,6 +11,13 @@
  *  • .ttl / .n3  — load Turtle directly (replace, or augment if Ctrl held)
  *
  * Ctrl+PgUp/Dn works in all panes including CodeMirror (turtle/shex).
+ *
+ * Runtime configuration
+ *  • On startup the app fetches the URL in ?configURL= (default: ./config.json).
+ *  • The config lists graphHandler entries (which tabs to show) and graphSources
+ *    entries (loaders to register automatically, e.g. from ./loaders/*.js).
+ *  • Built-in handlers are statically bundled; a config entry with a "url" field
+ *    dynamically imports that module instead (useful for custom deployments).
  */
 import './styles/main.css'
 import { readHistory }                                        from './lib/graph-store'
@@ -21,7 +28,7 @@ import { diffTurtle, renderDiffHtml }                        from './lib/diff'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange }   from './lib/parser-registry'
 import { buildLoaderPanels }                                 from './lib/loader-panels'
 import { resolveTypeKeys }                                   from '@modular-rdf/rdf-utils'
-import { getHandlers, onHandlersChange }                     from './lib/handler-registry'
+import { getHandlers, loadHandlerFromBlob, onHandlersChange } from './lib/handler-registry'
 import { registerBuiltinHandlers }                           from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
          updateExternalHandlers }                            from './lib/handler-panels'
@@ -32,10 +39,6 @@ import { LABEL_MODES, LABEL_MODE_NAMES,
          SEGMENT_SEP, type LabelMode,
          parseIntoStore }                                    from '@modular-rdf/rdf-utils'
 
-// ── Dev: pre-register loaders.  Remove for production. ───────────────────────
-import { registerDevLoaders } from './lib/loader-config'
-registerDevLoaders()
-
 // ── Register built-in pane handlers ──────────────────────────────────────────
 registerBuiltinHandlers()
 
@@ -43,6 +46,38 @@ registerBuiltinHandlers()
 const PREF_RERUN_ON_BASE_CHANGE  = true
 const PREF_RELABEL_ON_MODE_CHANGE = true
 const PREF_DEFAULT_BASE_IRI = window.location.origin + '/upload/'
+
+// ── Runtime config types ──────────────────────────────────────────────────────
+interface HandlerEntry {
+  name:    string
+  label:   string
+  hidden?: boolean
+  /** If present, dynamically import this ES module URL for the handler. */
+  url?:    string
+}
+interface SourceEntry {
+  url:    string
+  label?: string
+}
+interface AppConfig {
+  graphHandler: HandlerEntry[]
+  graphSources: SourceEntry[]
+}
+
+async function loadConfig(): Promise<AppConfig> {
+  const params    = new URLSearchParams(window.location.search)
+  const configUrl = params.get('configURL') ?? './config.json'
+  const resolved  = new URL(configUrl, window.location.href).href
+  try {
+    const res = await fetch(resolved)
+    if (!res.ok) throw new Error(`HTTP ${res.status} from ${resolved}`)
+    return await res.json() as AppConfig
+  } catch (e) {
+    console.error('[config] Failed to load config:', e)
+    toast(`Config load failed: ${e instanceof Error ? e.message : e}`, 'error')
+    return { graphHandler: [], graphSources: [] }
+  }
+}
 
 // ── HTML skeleton ─────────────────────────────────────────────────────────────
 document.querySelector('#app')!.innerHTML = `
@@ -77,43 +112,10 @@ document.querySelector('#app')!.innerHTML = `
 
   <div class="main">
     <div class="tabs" id="tabs">
-      <div class="tab active" data-tab="graph">Graph</div>
-      <div class="tab" data-tab="turtle">Turtle</div>
-      <div class="tab" data-tab="sparql">SPARQL</div>
-      <div class="tab" data-tab="shex">ShEx</div>
-      <div class="tab" data-tab="inference">Type Inference</div>
-      <div class="tab" data-tab="diff" id="diff-tab" style="display:none">Diff</div>
       <div class="tab-spacer"></div>
       <div id="handler-drop-zone-placeholder"></div>
     </div>
-
-    <div class="tab-content">
-
-      <!-- Graph (DOM built by @modular-rdf/pane-graph handler) -->
-      <div class="pane active" data-pane="graph"></div>
-
-      <!-- Turtle (DOM built by @modular-rdf/pane-turtle handler) -->
-      <div class="pane" data-pane="turtle"></div>
-
-      <!-- SPARQL (DOM built by @modular-rdf/pane-sparql handler) -->
-      <div class="pane" data-pane="sparql"></div>
-
-      <!-- ShEx (DOM built by @modular-rdf/pane-shex handler) -->
-      <div class="pane" data-pane="shex"></div>
-
-      <!-- Type Inference (DOM built by @modular-rdf/pane-inference handler) -->
-      <div class="pane" data-pane="inference"></div>
-
-      <!-- Diff -->
-      <div class="pane" data-pane="diff">
-        <div class="pane-toolbar flex-row">
-          <span class="mono text-xs text-muted grow">Triple-level diff: previous load vs current</span>
-          <span class="mono text-xs text-muted" id="diff-filenames"></span>
-        </div>
-        <div id="diff-content" class="diff-pane pane-scroll-host"></div>
-      </div>
-
-    </div>
+    <div class="tab-content"></div>
   </div>
 </div>
 
@@ -155,6 +157,12 @@ let labelMode: LabelMode = 'segment'
 let rdfsLabels = new Map<string, string>()
 let baseIri    = PREF_DEFAULT_BASE_IRI
 
+// ── Tab keyboard map — filled by init() ──────────────────────────────────────
+let tabMap: Record<string, string> = {}
+
+// ── Active tab name — set by init(), updated by switchTab() ──────────────────
+let activeHandlerName = 'graph'
+
 // ── Sidebar bottom section ────────────────────────────────────────────────────
 const sidebarPaneSection = document.getElementById('sidebar-pane-section')!
 
@@ -175,10 +183,10 @@ const handlerCallbacks: HandlerCallbacks = {
   },
 }
 
-// ── Mount all built-in handlers into their pane divs ─────────────────────────
+// ── Drop-zone for externally dropped handler .js files ───────────────────────
 {
-  const tabsEl    = document.getElementById('tabs')!
-  const contentEl = document.querySelector<HTMLElement>('.tab-content')!
+  const tabsEl      = document.getElementById('tabs')!
+  const contentEl   = document.querySelector<HTMLElement>('.tab-content')!
   const placeholder = document.getElementById('handler-drop-zone-placeholder')!
 
   const dropZone = buildHandlerDropZone(
@@ -188,7 +196,84 @@ const handlerCallbacks: HandlerCallbacks = {
     switchTab,
   )
   placeholder.replaceWith(dropZone)
+}
 
+// ── Async initialisation — reads config, builds tabs, mounts handlers ─────────
+async function init(): Promise<void> {
+  const config  = await loadConfig()
+  const tabsEl  = document.getElementById('tabs')!
+  const contentEl = document.querySelector<HTMLElement>('.tab-content')!
+  const tabSpacer = tabsEl.querySelector<HTMLElement>('.tab-spacer')!
+
+  const firstVisible = config.graphHandler.find(h => !h.hidden)
+  activeHandlerName  = firstVisible?.name ?? 'graph'
+  tabMap = Object.fromEntries(
+    config.graphHandler.filter(h => !h.hidden).map((h, i) => [String(i + 1), h.name])
+  )
+
+  // Build tab buttons and pane containers from config
+  for (const entry of config.graphHandler) {
+    const isFirst = entry.name === firstVisible?.name
+
+    const tab = document.createElement('div')
+    tab.className   = `tab${isFirst ? ' active' : ''}`
+    tab.dataset.tab = entry.name
+    if (entry.name === 'diff') tab.id = 'diff-tab'
+    if (entry.hidden) tab.style.display = 'none'
+    tab.textContent = entry.label
+    tabsEl.insertBefore(tab, tabSpacer)
+
+    const pane = document.createElement('div')
+    pane.className    = `pane${isFirst ? ' active' : ''}`
+    pane.dataset.pane = entry.name
+    if (entry.name === 'diff') {
+      pane.innerHTML = `
+        <div class="pane-toolbar flex-row">
+          <span class="mono text-xs text-muted grow">Triple-level diff: previous load vs current</span>
+          <span class="mono text-xs text-muted" id="diff-filenames"></span>
+        </div>
+        <div id="diff-content" class="diff-pane pane-scroll-host"></div>`
+    }
+    contentEl.appendChild(pane)
+  }
+
+  // Load any handler modules specified by URL (overrides pre-bundled handler of same name)
+  for (const entry of config.graphHandler) {
+    if (!entry.url) continue
+    try {
+      const url = new URL(entry.url, window.location.href).href
+      await loadHandlerFromBlob(url)
+    } catch (e) {
+      toast(`Failed to load handler '${entry.name}': ${e instanceof Error ? e.message : e}`, 'error')
+    }
+  }
+
+  // Mount all registered handlers into their pane divs
+  for (const { name } of config.graphHandler) {
+    const h = getHandlers().find(x => x.name === name)
+    if (h) {
+      const paneEl = contentEl.querySelector<HTMLElement>(`[data-pane="${name}"]`)!
+      h.mount(paneEl, handlerCallbacks)
+    }
+  }
+
+  // Activate the first visible pane's sidebar section
+  if (firstVisible) {
+    const firstHandler = getHandlers().find(x => x.name === firstVisible.name)
+    firstHandler?.onActivate?.(sidebarPaneSection)
+  }
+
+  // Auto-load graph sources listed in the config
+  for (const source of config.graphSources ?? []) {
+    try {
+      const url = new URL(source.url, window.location.href).href
+      await loadLoaderFromBlob(url)
+    } catch (e) {
+      console.warn(`[config] Failed to load source '${source.url}':`, e)
+    }
+  }
+
+  // Now safe to wire up the handler-change listener (only fires for post-init drops)
   onHandlersChange(handlers => {
     for (const h of handlers) {
       mountExternalHandler(h, tabsEl, contentEl, handlerCallbacks, switchTab)
@@ -196,20 +281,7 @@ const handlerCallbacks: HandlerCallbacks = {
   })
 }
 
-// Mount all built-in handlers
-for (const name of ['graph', 'turtle', 'sparql', 'shex', 'inference']) {
-  const h = getHandlers().find(x => x.name === name)
-  if (h) {
-    const paneEl = document.querySelector<HTMLElement>(`[data-pane="${name}"]`)!
-    h.mount(paneEl, handlerCallbacks)
-  }
-}
-
-// Activate the graph pane's sidebar on startup
-{
-  const graphHandler = getHandlers().find(x => x.name === 'graph')
-  graphHandler?.onActivate?.(sidebarPaneSection)
-}
+init().catch(e => console.error('[init]', e))
 
 // ── Loader panels ─────────────────────────────────────────────────────────────
 const loaderPanelContainer = document.getElementById('loader-panels')!
@@ -347,7 +419,7 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
     document.getElementById('btn-download')!.style.display = ''
 
     if (prevTurtle && prevTurtle !== turtle) {
-      document.getElementById('diff-tab')!.style.display = ''
+      document.getElementById('diff-tab')?.style && (document.getElementById('diff-tab')!.style.display = '')
       renderDiff()
     }
 
@@ -374,8 +446,6 @@ function refreshRdfsLabels(): void {
 }
 
 // ── Tab switching ─────────────────────────────────────────────────────────────
-let activeHandlerName = 'graph'
-
 function switchTab(name: string): void {
   // Deactivate previous handler
   if (activeHandlerName !== name) {
@@ -435,7 +505,6 @@ document.addEventListener('keydown', e => {
     document.getElementById('kbd-overlay')!.classList.remove('visible')
     return
   }
-  const tabMap: Record<string,string> = { '1':'graph','2':'turtle','3':'sparql','4':'shex','5':'inference' }
   if (e.altKey && tabMap[e.key]) { e.preventDefault(); switchTab(tabMap[e.key]); return }
   if (e.altKey && e.key === 'd') { document.getElementById('btn-download')?.click(); return }
 })
@@ -555,8 +624,5 @@ document.getElementById('kbd-overlay')!.addEventListener('click', e => { if (e.t
 document.getElementById('btn-shortcuts')!.addEventListener('click', () => document.getElementById('kbd-overlay')!.classList.add('visible'))
 
 window.addEventListener('popstate', () => {
-  // Let the graph handler respond to history changes via its own restoreHistory()
-  // (GraphView already calls readHistory() in its constructor).
-  // We still read history so popstate doesn't become a no-op for bookmarked URLs.
   readHistory()
 })

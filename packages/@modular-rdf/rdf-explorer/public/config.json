@@ -1,0 +1,13 @@
+{
+  "graphHandler": [
+    { "name": "graph",     "label": "Graph" },
+    { "name": "turtle",    "label": "Turtle" },
+    { "name": "sparql",    "label": "SPARQL" },
+    { "name": "shex",      "label": "ShEx" },
+    { "name": "inference", "label": "Type Inference" },
+    { "name": "diff",      "label": "Diff", "hidden": true }
+  ],
+  "graphSources": [
+    { "url": "./loaders/knows-parser.js" }
+  ]
+}

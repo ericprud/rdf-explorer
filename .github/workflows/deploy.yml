@@ -35,7 +35,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: packages/@modular-rdf/rdf-explorer/dist
 
   deploy:
     needs: build

@@ -41,7 +41,7 @@ export class ShExWorkerClient {
     )
 
     // The worker posts { type: 'ready' } as soon as it loads.
-    this.ready = new Promise<void>((resolve, reject) => {
+    this.ready = new Promise<void>(resolve => {
       const onReady = (evt: MessageEvent<Record<string, unknown>>) => {
         if (evt.data.type === 'ready') {
           this.worker.removeEventListener('message', onReady)
@@ -49,11 +49,25 @@ export class ShExWorkerClient {
         }
       }
       this.worker.addEventListener('message', onReady)
-      this.worker.addEventListener('error', e => reject(new Error(`Worker load error: ${e.message}`)))
     })
 
     this.worker.addEventListener('message', (evt: MessageEvent<Record<string, unknown>>) => {
       this.handleMessage(evt.data)
+    })
+
+    // Persistent error handler for uncaught worker exceptions (at load time or mid-validation).
+    // e.preventDefault() is critical: without it the ErrorEvent propagates to window.onerror,
+    // which Vite's HMR client intercepts and uses to trigger a full-page reload.
+    this.worker.addEventListener('error', e => {
+      e.preventDefault()
+      const err = new Error(`Worker error: ${e.message ?? 'unknown'}`)
+      if (this.initRej) {
+        this.initRej(err)
+        this.initRes = null; this.initRej = null
+      }
+      for (const { resolve } of this.pending.values())
+        resolve({ passed: false, elapsed: 0, errors: [`Worker error: ${e.message ?? 'unknown'}`] })
+      this.pending.clear()
     })
   }
 

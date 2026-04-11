@@ -79,6 +79,20 @@ export class ShExEditor {
     this.view.requestMeasure()
   }
 
+  /**
+   * Scroll so the first occurrence of `text` is visible and selected.
+   */
+  scrollToText(text: string): void {
+    const doc = this.view.state.doc.toString()
+    const idx = doc.indexOf(text)
+    if (idx === -1) return
+    this.view.dispatch({
+      effects:   EditorView.scrollIntoView(idx, { y: 'center' }),
+      selection: { anchor: idx, head: idx + text.length },
+    })
+    this.view.focus()
+  }
+
   destroy(): void {
     this.view.destroy()
   }

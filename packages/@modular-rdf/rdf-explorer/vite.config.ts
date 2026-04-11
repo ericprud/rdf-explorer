@@ -21,6 +21,9 @@ export default defineConfig({
       '@modular-rdf/rdf-utils':         resolve(__dirname, '../rdf-utils/src/index.ts'),
       '@modular-rdf/pane-sparql':       resolve(__dirname, '../pane-sparql/src/index.ts'),
       '@modular-rdf/pane-inference':    resolve(__dirname, '../pane-inference/src/index.ts'),
+      '@modular-rdf/pane-graph':        resolve(__dirname, '../pane-graph/src/index.ts'),
+      '@modular-rdf/pane-turtle':       resolve(__dirname, '../pane-turtle/src/index.ts'),
+      '@modular-rdf/pane-shex':         resolve(__dirname, '../pane-shex/src/index.ts'),
     }
   },
   server: {
@@ -41,17 +44,15 @@ export default defineConfig({
                          '@codemirror/language', '@codemirror/commands',
                          '@codemirror/search', '@codemirror/autocomplete',
                          '@codemirror/theme-one-dark', 'codemirror-lang-turtle'],
-          // Worker script gets its own chunk so Vite emits it as a
-          // separate file that can be loaded via new Worker(new URL(…))
-          'shex-worker': ['./src/lib/shex-worker.ts'],
+          // shex-worker: Vite auto-detects new Worker(new URL(...)) and emits
+          // a separate chunk — no manual entry needed.
         }
       }
     }
   },
   optimizeDeps: {
     include: ['d3', 'n3', 'codemirror'],
-    // Exclude worker from pre-bundling so it stays as a separate module
-    exclude: ['./src/lib/shex-worker.ts'],
+    // shex-worker is excluded from pre-bundling via the Vite worker config below
   },
   worker: {
     // Emit worker as ES module so it can use import() inside the worker

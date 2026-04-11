@@ -95,6 +95,21 @@ class InferencePaneHandler implements GraphHandler {
 
     this.callbacks?.toast(`${suggestions.length} suggestion(s)`, 'info')
   }
+
+  focusTerm(iri: string): void {
+    if (!this.listEl) return
+    // Find first inference-item whose subject text contains the IRI's local name
+    const items = this.listEl.querySelectorAll<HTMLElement>('.inference-item')
+    for (const item of items) {
+      const subj = item.querySelector<HTMLElement>('.inference-subject')
+      if (subj?.title === iri || subj?.textContent?.includes(iri.split(/[/#]/).pop() ?? iri)) {
+        item.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        item.style.outline = '2px solid var(--accent-teal)'
+        setTimeout(() => { item.style.outline = '' }, 2000)
+        break
+      }
+    }
+  }
 }
 
 export const handler: GraphHandler = new InferencePaneHandler()

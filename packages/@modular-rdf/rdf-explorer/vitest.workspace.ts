@@ -7,6 +7,9 @@ const apiAlias = {
   '@modular-rdf/rdf-utils':         resolve(__dirname, '../rdf-utils/src/index.ts'),
   '@modular-rdf/pane-sparql':       resolve(__dirname, '../pane-sparql/src/index.ts'),
   '@modular-rdf/pane-inference':    resolve(__dirname, '../pane-inference/src/index.ts'),
+  '@modular-rdf/pane-graph':        resolve(__dirname, '../pane-graph/src/index.ts'),
+  '@modular-rdf/pane-turtle':       resolve(__dirname, '../pane-turtle/src/index.ts'),
+  '@modular-rdf/pane-shex':         resolve(__dirname, '../pane-shex/src/index.ts'),
 }
 
 export default defineWorkspace([

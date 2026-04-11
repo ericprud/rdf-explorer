@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@modular-rdf/graph-source-api":  ["../graph-source-api/src/index.ts"],
+      "@modular-rdf/graph-handler-api": ["../graph-handler-api/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

@@ -133,6 +133,17 @@ LIMIT 50</textarea>
 
     this.callbacks?.toast(`${res.bindings.length} results`, 'success')
   }
+
+  focusTerm(iri: string): void {
+    if (!this.resultsEl) return
+    // Find first cell whose title matches the IRI and scroll to it
+    const cell = this.resultsEl.querySelector<HTMLElement>(`td[title="${CSS.escape(iri)}"]`)
+    if (cell) {
+      cell.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+      cell.style.outline = '2px solid var(--accent-teal)'
+      setTimeout(() => { cell.style.outline = '' }, 2000)
+    }
+  }
 }
 
 export const handler: GraphHandler = new SparqlPaneHandler()

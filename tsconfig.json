@@ -6,6 +6,9 @@
     { "path": "packages/@modular-rdf/rdf-utils" },
     { "path": "packages/@modular-rdf/pane-sparql" },
     { "path": "packages/@modular-rdf/pane-inference" },
+    { "path": "packages/@modular-rdf/pane-graph" },
+    { "path": "packages/@modular-rdf/pane-turtle" },
+    { "path": "packages/@modular-rdf/pane-shex" },
     { "path": "packages/@modular-rdf/rdf-explorer" }
   ]
 }

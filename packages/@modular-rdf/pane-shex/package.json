@@ -1,0 +1,24 @@
+{
+  "name": "@modular-rdf/pane-shex",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@modular-rdf/graph-handler-api": "*",
+    "@modular-rdf/rdf-utils": "*",
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/commands": "^6.7.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/search": "^6.5.0",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/theme-one-dark": "^6.1.2",
+    "@codemirror/view": "^6.35.0",
+    "@shexjs/neighborhood-rdfjs": "^1.0.0-alpha.29",
+    "@shexjs/parser": "1.0.0-alpha.28",
+    "@shexjs/validator": "1.0.0-alpha.28",
+    "codemirror": "^6.0.2",
+    "codemirror-lang-turtle": "^0.0.2",
+    "n3": "^1.22.0"
+  }
+}

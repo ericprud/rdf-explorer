@@ -62,6 +62,11 @@ export interface HandlerCallbacks {
   switchTab(name: string): void
   /** Navigate the graph view to show a specific node. */
   showNode?(nodeId: string): void
+  /**
+   * Scroll the active pane to highlight the first occurrence of the given IRI.
+   * Routes to the active handler's focusTerm() method.
+   */
+  focusTerm(iri: string): void
 }
 
 // ── GraphHandler interface ───────────────────────────────────────────────────
@@ -105,9 +110,27 @@ export interface GraphHandler {
 
   /**
    * Optional: called when the user switches to this pane's tab.
-   * Use this for deferred layout work (e.g. CodeMirror requestMeasure).
+   * The handler receives the bottom sidebar container and may populate it.
+   * Use this for deferred layout work (e.g. CodeMirror requestMeasure) and
+   * to fill the sidebar with pane-specific controls (node list, filters, etc.).
    */
-  onActivate?(): void
+  onActivate?(sidebarEl: HTMLElement): void
+
+  /**
+   * Optional: called when the user leaves this pane's tab.
+   * Use this to clear any pane-specific sidebar content.
+   */
+  onDeactivate?(): void
+
+  /**
+   * Optional: scroll the pane to highlight the first occurrence of the IRI.
+   * Graph: ensure the node is visible and highlight it.
+   * Turtle: scroll to and select the first occurrence of the IRI text.
+   * SPARQL: scroll to the first result row mentioning the IRI.
+   * ShEx: scroll to the shape used to validate nodes of this type.
+   * Inference: scroll to the first inference involving this IRI.
+   */
+  focusTerm?(iri: string): void
 
   /**
    * Optional: called when the handler is removed from the registry.

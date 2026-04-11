@@ -20,11 +20,6 @@ import { loadHandlerFromBlob } from './handler-registry'
 // a tab and a pane div; we must not create duplicates.
 const BUILTIN_PANE_NAMES = new Set(['graph', 'turtle', 'sparql', 'shex', 'inference', 'diff'])
 
-// Panes whose state is managed directly by main.ts, not through the handler API.
-// updateExternalHandlers skips these to avoid double-updating.
-// 'diff' has no handler at all, so it never appears in getHandlers() — not needed here.
-const STATE_MANAGED_PANES = new Set(['graph', 'turtle', 'shex'])
-
 // Track which external handlers have already had a tab+pane created.
 const mountedExternalHandlers = new Map<string, HTMLElement>()
 
@@ -165,7 +160,7 @@ export function mountExternalHandler(
 // ── State broadcast ───────────────────────────────────────────────────────────
 
 /**
- * Push the latest application state to all external handlers.
+ * Push the latest application state to all handlers.
  * Call this from main.ts after each graph update.
  *
  * @param text  Optional text form of the current graph.  If provided, any
@@ -177,7 +172,6 @@ export function updateExternalHandlers(
   text?:    { text: string; format?: 'turtle' | 'trig' },
 ): void {
   for (const h of handlers) {
-    if (STATE_MANAGED_PANES.has(h.name)) continue
     try { h.update(state) } catch (e) { console.error(`[handler:${h.name}] update() threw`, e) }
     if (text && h.updateText) {
       try { h.updateText(text.text, text.format) } catch (e) { console.error(`[handler:${h.name}] updateText() threw`, e) }

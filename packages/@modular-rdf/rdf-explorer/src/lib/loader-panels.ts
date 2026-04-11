@@ -7,7 +7,7 @@
  */
 
 import type { GraphSource, ApplyGraphCallback } from '@modular-rdf/graph-source-api'
-import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '../components/graph-view'
+import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '@modular-rdf/pane-graph'
 import { resolveTypeKeys }                         from '@modular-rdf/rdf-utils'
 
 export type { ApplyGraphCallback }

@@ -31,6 +31,9 @@
     "@modular-rdf/rdf-utils": "*",
     "@modular-rdf/pane-sparql": "*",
     "@modular-rdf/pane-inference": "*",
+    "@modular-rdf/pane-graph": "*",
+    "@modular-rdf/pane-turtle": "*",
+    "@modular-rdf/pane-shex": "*",
     "n3": "^1.22.0"
   },
   "devDependencies": {

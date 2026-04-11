@@ -4,9 +4,9 @@
   "description": "Shared RDF parsing and labelling utilities for the modular-rdf toolkit",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/rdf-utils.ts"
   },
-  "types": "./src/index.ts",
+  "types": "./src/rdf-utils.ts",
   "files": ["src"],
   "dependencies": {
     "n3": "*"

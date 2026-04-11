@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./src/pane-turtle.ts",
   "dependencies": {
     "@modular-rdf/graph-handler-api": "*",
     "@codemirror/autocomplete": "^6.18.0",

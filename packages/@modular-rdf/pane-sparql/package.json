@@ -4,9 +4,9 @@
   "description": "SPARQL SELECT pane handler for the modular RDF Explorer",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/pane-sparql.ts"
   },
-  "types": "./src/index.ts",
+  "types": "./src/pane-sparql.ts",
   "files": ["src"],
   "dependencies": {
     "@modular-rdf/graph-handler-api": "*",

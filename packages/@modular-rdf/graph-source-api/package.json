@@ -4,9 +4,9 @@
   "description": "TypeScript interfaces for pluggable RDF file loaders",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/graph-source-api.ts"
   },
-  "types": "./src/index.ts",
+  "types": "./src/graph-source-api.ts",
   "files": ["src"],
   "publishConfig": {
     "access": "public"

@@ -4,9 +4,9 @@
   "description": "Type-inference pane handler for the modular RDF Explorer",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/pane-inference.ts"
   },
-  "types": "./src/index.ts",
+  "types": "./src/pane-inference.ts",
   "files": ["src"],
   "dependencies": {
     "@modular-rdf/graph-handler-api": "*",

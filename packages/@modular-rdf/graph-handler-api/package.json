@@ -4,9 +4,9 @@
   "description": "TypeScript interfaces for pluggable RDF Explorer pane handlers",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/graph-handler-api.ts"
   },
-  "types": "./src/index.ts",
+  "types": "./src/graph-handler-api.ts",
   "files": ["src"],
   "dependencies": {
     "@modular-rdf/graph-source-api": "*"

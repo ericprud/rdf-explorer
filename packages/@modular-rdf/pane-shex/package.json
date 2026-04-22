@@ -5,8 +5,8 @@
   "type": "module",
   "main": "./src/pane-shex.ts",
   "dependencies": {
-    "@modular-rdf/graph-handler-api": "*",
-    "@modular-rdf/rdf-utils": "*",
+    "@modular-rdf/api-graph-handler": "*",
+    "@modular-rdf/util-rdf": "*",
     "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.7.0",
     "@codemirror/language": "^6.10.0",

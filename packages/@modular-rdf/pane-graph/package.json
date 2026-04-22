@@ -5,8 +5,8 @@
   "type": "module",
   "main": "./src/pane-graph.ts",
   "dependencies": {
-    "@modular-rdf/graph-handler-api": "*",
-    "@modular-rdf/rdf-utils": "*",
+    "@modular-rdf/api-graph-handler": "*",
+    "@modular-rdf/util-rdf": "*",
     "d3": "^7.9.0",
     "n3": "^1.22.0"
   },

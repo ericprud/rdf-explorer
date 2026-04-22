@@ -1,5 +1,5 @@
 /**
- * @modular-rdf/graph-handler-api
+ * @modular-rdf/api-graph-handler
  *
  * A GraphHandler defines a pluggable pane in the RDF Explorer UI.
  *
@@ -25,9 +25,9 @@
  * GraphSources use, so any handler can push new RDF into the pipeline.
  */
 
-import type { ApplyGraphInput, DatasetCore } from '@modular-rdf/graph-source-api'
+import type { ApplyGraphInput, DatasetCore } from '@modular-rdf/api-graph-source'
 export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphStore,
-              Term, Quad, DatasetCore, ResolverContext } from '@modular-rdf/graph-source-api'
+              Term, Quad, DatasetCore, ResolverContext } from '@modular-rdf/api-graph-source'
 
 // ── Shared state snapshot ────────────────────────────────────────────────────
 

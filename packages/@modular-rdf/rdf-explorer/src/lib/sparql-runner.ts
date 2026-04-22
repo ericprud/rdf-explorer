@@ -4,7 +4,7 @@
  */
 import * as N3 from 'n3'
 import type { DatasetCore, Term } from '@rdfjs/types'
-import { parseIntoStore } from '@modular-rdf/rdf-utils'
+import { parseIntoStore } from '@modular-rdf/util-rdf'
 
 export interface SparqlBinding { [v: string]: string }
 export interface SparqlResult  { variables: string[]; bindings: SparqlBinding[]; error?: string }

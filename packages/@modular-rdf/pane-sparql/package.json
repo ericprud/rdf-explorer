@@ -9,8 +9,8 @@
   "types": "./src/pane-sparql.ts",
   "files": ["src"],
   "dependencies": {
-    "@modular-rdf/graph-handler-api": "*",
-    "@modular-rdf/rdf-utils": "*",
+    "@modular-rdf/api-graph-handler": "*",
+    "@modular-rdf/util-rdf": "*",
     "n3": "*"
   },
   "publishConfig": {

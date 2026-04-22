@@ -6,7 +6,7 @@
  */
 
 import { registerHandler } from './handler-registry'
-import type { GraphHandler } from '@modular-rdf/graph-handler-api'
+import type { GraphHandler } from '@modular-rdf/api-graph-handler'
 import { handler as graphHandlerImpl    } from '@modular-rdf/pane-graph'
 import { handler as turtleHandlerImpl   } from '@modular-rdf/pane-turtle'
 import { handler as sparqlHandlerImpl   } from '@modular-rdf/pane-sparql'

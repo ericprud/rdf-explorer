@@ -3,8 +3,8 @@
  * Handles SELECT/WHERE with basic triple patterns and LIMIT.
  */
 import * as N3 from 'n3'
-import type { DatasetCore, Term } from '@modular-rdf/graph-handler-api'
-import { parseIntoStore } from '@modular-rdf/rdf-utils'
+import type { DatasetCore, Term } from '@modular-rdf/api-graph-handler'
+import { parseIntoStore } from '@modular-rdf/util-rdf'
 
 export interface SparqlBinding { [v: string]: string }
 export interface SparqlResult  { variables: string[]; bindings: SparqlBinding[]; error?: string }

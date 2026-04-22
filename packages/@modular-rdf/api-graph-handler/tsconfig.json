@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "paths": {
-      "@modular-rdf/graph-source-api": ["../graph-source-api/src/graph-source-api.ts"]
+      "@modular-rdf/api-graph-source": ["../api-graph-source/src/api-graph-source.ts"]
     }
   },
   "include": ["src"]

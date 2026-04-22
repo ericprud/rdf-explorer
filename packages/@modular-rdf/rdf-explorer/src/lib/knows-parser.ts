@@ -21,7 +21,7 @@
  *   • Unknown lines produce a warning and are skipped.
  */
 
-import type { GraphSource, ParseResult, ApplyGraphCallback } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ParseResult, ApplyGraphCallback } from '@modular-rdf/api-graph-source'
 import { buildBasePanel } from './base-panel'
 
 const BASE    = 'https://example.org/knows#'

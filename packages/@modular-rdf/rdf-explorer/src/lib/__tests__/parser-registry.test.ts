@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { parser as knowsParser } from '../knows-parser'
-import type { GraphSource } from '@modular-rdf/graph-source-api'
+import type { GraphSource } from '@modular-rdf/api-graph-source'
 
 // We import the registry functions fresh each test by reimporting via dynamic
 // import after clearing module state — but since Vitest uses ESM isolation per

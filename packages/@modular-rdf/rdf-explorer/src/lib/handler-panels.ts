@@ -12,8 +12,8 @@
  * area.  Dropping a .js file onto it loads and registers a GraphHandler.
  */
 
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
-import type { ApplyGraphCallback } from '@modular-rdf/graph-source-api'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
+import type { ApplyGraphCallback } from '@modular-rdf/api-graph-source'
 import { loadHandlerFromBlob } from './handler-registry'
 
 

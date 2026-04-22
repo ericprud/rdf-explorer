@@ -1,12 +1,12 @@
 {
-  "name": "@modular-rdf/graph-source-api",
+  "name": "@modular-rdf/api-graph-source",
   "version": "0.1.0",
   "description": "TypeScript interfaces for pluggable RDF file loaders",
   "type": "module",
   "exports": {
-    ".": "./src/graph-source-api.ts"
+    ".": "./src/api-graph-source.ts"
   },
-  "types": "./src/graph-source-api.ts",
+  "types": "./src/api-graph-source.ts",
   "devDependencies": {
     "@rdfjs/types": "^2.0.1"
   },

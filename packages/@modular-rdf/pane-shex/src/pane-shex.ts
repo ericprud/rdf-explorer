@@ -13,8 +13,8 @@
  * focusTerm: looks up rdf:type of iri in current store, constructs the
  *   shapeId as `<typeIri>Shape`, scrolls the ShEx editor to that shape.
  */
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
-import { labelIri } from '@modular-rdf/rdf-utils'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
+import { labelIri } from '@modular-rdf/util-rdf'
 import * as N3 from 'n3'
 import { ShExEditor } from './shex-editor'
 import { ShExWorkerClient } from './shex-worker-client'

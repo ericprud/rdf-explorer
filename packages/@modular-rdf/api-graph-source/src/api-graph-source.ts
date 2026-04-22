@@ -1,5 +1,5 @@
 /**
- * @modular-rdf/graph-source-api  (v5)
+ * @modular-rdf/api-graph-source  (v5)
  *
  * A GraphSource converts files to RDF and optionally owns UI controls
  * rendered inside its sidebar panel.

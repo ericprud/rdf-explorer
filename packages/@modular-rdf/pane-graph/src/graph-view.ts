@@ -25,7 +25,7 @@
  */
 import * as d3 from 'd3'
 import type { GraphData, GraphNode, GraphEdge } from './graph-data'
-import { pushHistory, readHistory } from '@modular-rdf/rdf-utils'
+import { pushHistory, readHistory } from './view-state'
 
 export interface GraphViewOptions {
   container:    HTMLElement

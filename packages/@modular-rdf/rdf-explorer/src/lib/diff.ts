@@ -2,7 +2,7 @@
  * Turtle Diff – triple-level comparison of two Turtle documents
  */
 import type { Quad } from '@rdfjs/types'
-import { parseTurtle } from '@modular-rdf/rdf-utils'
+import { parseTurtle } from '@modular-rdf/util-rdf'
 
 export interface TripleDiff {
   added:     Quad[]

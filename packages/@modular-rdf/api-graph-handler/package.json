@@ -1,15 +1,15 @@
 {
-  "name": "@modular-rdf/graph-handler-api",
+  "name": "@modular-rdf/api-graph-handler",
   "version": "0.1.0",
   "description": "TypeScript interfaces for pluggable RDF Explorer pane handlers",
   "type": "module",
   "exports": {
-    ".": "./src/graph-handler-api.ts"
+    ".": "./src/api-graph-handler.ts"
   },
-  "types": "./src/graph-handler-api.ts",
+  "types": "./src/api-graph-handler.ts",
   "files": ["src"],
   "dependencies": {
-    "@modular-rdf/graph-source-api": "*"
+    "@modular-rdf/api-graph-source": "*"
   },
   "publishConfig": {
     "access": "public"

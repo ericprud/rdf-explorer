@@ -1,5 +1,5 @@
 import * as N3 from 'n3'
-import { parseTurtle } from '@modular-rdf/rdf-utils'
+import { parseTurtle } from '@modular-rdf/util-rdf'
 
 export interface InferenceSuggestion {
   subject:       string

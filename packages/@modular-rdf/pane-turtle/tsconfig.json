@@ -9,8 +9,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@modular-rdf/graph-source-api":  ["../graph-source-api/src/graph-source-api.ts"],
-      "@modular-rdf/graph-handler-api": ["../graph-handler-api/src/graph-handler-api.ts"]
+      "@modular-rdf/api-graph-source":  ["../api-graph-source/src/api-graph-source.ts"],
+      "@modular-rdf/api-graph-handler": ["../api-graph-handler/src/api-graph-handler.ts"]
     }
   },
   "include": ["src"]

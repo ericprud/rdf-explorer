@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildLoaderPanels } from '../../loader-panels'
 import { buildBasePanel }    from '../../base-panel'
-import type { GraphSource, ApplyGraphCallback, ApplyGraphInput } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ApplyGraphCallback, ApplyGraphInput } from '@modular-rdf/api-graph-source'
 
 // ── Stub loader factory ───────────────────────────────────────────────────────
 function stub(name: string, exts: string[] = ['.txt'], desc?: string): GraphSource {

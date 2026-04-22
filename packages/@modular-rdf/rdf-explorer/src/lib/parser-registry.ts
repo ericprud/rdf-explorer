@@ -9,7 +9,7 @@
  * The registry emits change events so the UI can rebuild the sidebar panels.
  */
 
-import type { GraphSource } from '@modular-rdf/graph-source-api'
+import type { GraphSource } from '@modular-rdf/api-graph-source'
 
 // ── Subscribers ──────────────────────────────────────────────────────────────
 type ChangeListener = (loaders: GraphSource[]) => void

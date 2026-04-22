@@ -6,9 +6,9 @@
  * This module manages the container element and the registry-change subscription.
  */
 
-import type { GraphSource, ApplyGraphCallback } from '@modular-rdf/graph-source-api'
+import type { GraphSource, ApplyGraphCallback } from '@modular-rdf/api-graph-source'
 import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '@modular-rdf/pane-graph'
-import { resolveTypeKeys }                         from '@modular-rdf/rdf-utils'
+import { resolveTypeKeys }                         from '@modular-rdf/util-rdf'
 
 export type { ApplyGraphCallback }
 

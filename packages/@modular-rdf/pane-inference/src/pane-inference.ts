@@ -7,7 +7,7 @@
  * It receives the Turtle text via updateText() and runs inference on demand.
  */
 
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
 import { inferTypes } from './type-inference'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

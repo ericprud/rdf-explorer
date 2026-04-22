@@ -9,7 +9,7 @@
  *
  * focusTerm: scrolls the editor to the first occurrence of the IRI.
  */
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
 import { TurtleEditor } from './turtle-editor'
 
 class TurtlePaneHandler implements GraphHandler {

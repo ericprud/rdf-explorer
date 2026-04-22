@@ -9,7 +9,7 @@
  * reimplement it.
  */
 
-import type { GraphSource } from '@modular-rdf/graph-source-api'
+import type { GraphSource } from '@modular-rdf/api-graph-source'
 
 /** HTML-escape for safe insertion into text content or attribute values. */
 export function esc(s: string): string {

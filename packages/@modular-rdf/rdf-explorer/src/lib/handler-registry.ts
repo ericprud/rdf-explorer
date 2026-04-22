@@ -10,7 +10,7 @@
  * The registry emits change events so the UI can rebuild the tab bar.
  */
 
-import type { GraphHandler } from '@modular-rdf/graph-handler-api'
+import type { GraphHandler } from '@modular-rdf/api-graph-handler'
 
 // ── Subscribers ──────────────────────────────────────────────────────────────
 type ChangeListener = (handlers: GraphHandler[]) => void

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "./src/pane-turtle.ts",
   "dependencies": {
-    "@modular-rdf/graph-handler-api": "*",
+    "@modular-rdf/api-graph-handler": "*",
     "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.7.0",
     "@codemirror/language": "^6.10.0",

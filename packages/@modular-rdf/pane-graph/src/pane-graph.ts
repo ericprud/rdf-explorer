@@ -10,8 +10,8 @@
  *  - Legend
  *  - Sidebar: filter, spotlight, group-by, stats, node list (via onActivate)
  */
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
-import { labelIri } from '@modular-rdf/rdf-utils'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
+import { labelIri } from '@modular-rdf/util-rdf'
 import * as N3 from 'n3'
 import { GraphView, TYPE_COLORS, TYPE_RADII, HULL_FILLS } from './graph-view'
 import { buildGraphData, shortIri, type GraphNode, type GraphData } from './graph-data'
@@ -22,6 +22,8 @@ export { TYPE_COLORS, TYPE_RADII, HULL_FILLS }
 export { assignTypeColors }
 export { buildRenderConfigJsonLd, parseRenderConfigJsonLd, normalisePrefixes }
 export type { GraphNode, GraphData }
+export { pushHistory, readHistory } from './view-state'
+export type { ViewState } from './view-state'
 
 function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')

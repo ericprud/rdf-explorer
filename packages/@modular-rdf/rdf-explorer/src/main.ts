@@ -27,17 +27,17 @@ import { parseRenderConfigJsonLd,
 import { diffTurtle, renderDiffHtml }                        from './lib/diff'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange }   from './lib/parser-registry'
 import { buildLoaderPanels }                                 from './lib/loader-panels'
-import { resolveTypeKeys }                                   from '@modular-rdf/rdf-utils'
+import { resolveTypeKeys }                                   from '@modular-rdf/util-rdf'
 import { getHandlers, loadHandlerFromBlob, onHandlersChange } from './lib/handler-registry'
 import { registerBuiltinHandlers }                           from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
          updateExternalHandlers }                            from './lib/handler-panels'
-import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/graph-source-api'
-import type { HandlerCallbacks }                             from '@modular-rdf/graph-handler-api'
+import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/api-graph-source'
+import type { HandlerCallbacks }                             from '@modular-rdf/api-graph-handler'
 import * as N3                                               from 'n3'
 import { LABEL_MODES, LABEL_MODE_NAMES,
          SEGMENT_SEP, type LabelMode,
-         parseIntoStore }                                    from '@modular-rdf/rdf-utils'
+         parseIntoStore }                                    from '@modular-rdf/util-rdf'
 
 // ── Register built-in pane handlers ──────────────────────────────────────────
 registerBuiltinHandlers()

@@ -6,8 +6,8 @@
  * shortening so the output mirrors the prefixes the user already chose.
  */
 import * as N3 from 'n3'
-import type { DatasetCore } from '@modular-rdf/graph-handler-api'
-import { parseTurtle, parseIntoStore } from '@modular-rdf/rdf-utils'
+import type { DatasetCore } from '@modular-rdf/api-graph-handler'
+import { parseTurtle, parseIntoStore } from '@modular-rdf/util-rdf'
 
 export interface ValidationResult {
   nodeId:  string

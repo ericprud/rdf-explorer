@@ -8,7 +8,7 @@
  * run SELECT queries against the current graph.
  */
 
-import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/graph-handler-api'
+import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
 import { runSparqlSelect } from './sparql-runner'
 import type * as N3 from 'n3'
 

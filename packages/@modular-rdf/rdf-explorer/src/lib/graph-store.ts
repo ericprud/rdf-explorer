@@ -1,7 +1,7 @@
 /**
  * Graph Store – parse Turtle with N3, manage graph data + URL-hash history
  */
-import * as N3 from 'n3'
+import type { Quad } from '@rdfjs/types'
 import { parseTurtle } from '@modular-rdf/rdf-utils'
 
 export interface GraphNode {
@@ -63,7 +63,7 @@ export async function parseTurtleToGraph(
   baseIri = 'https://example.org/upload/' // TODO: inherit
 ): Promise<{ graph: GraphData; parseErrors: string[]; prefixes: Record<string, string> }> {
   const parseErrors: string[] = []
-  let quads: N3.Quad[] = []
+  let quads: Quad[] = []
   let prefixes: Record<string, string> = { ...WELL_KNOWN }
 
   try {

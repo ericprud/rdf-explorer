@@ -6,6 +6,7 @@
  * shortening so the output mirrors the prefixes the user already chose.
  */
 import * as N3 from 'n3'
+import type { DatasetCore } from '@modular-rdf/graph-handler-api'
 import { parseTurtle, parseIntoStore } from '@modular-rdf/rdf-utils'
 
 export interface ValidationResult {
@@ -37,7 +38,7 @@ function makeShortener(prefixes: Record<string, string>): (iri: string) => strin
  * Derive the set of all distinct rdf:type values present in the store.
  * Uses store.match() (RDF/JS Dataset spec) for portability.
  */
-export function distinctExTypes(store: N3.Store): string[] {
+export function distinctExTypes(store: DatasetCore): string[] {
   const seen = new Set<string>()
   for (const q of store.match(null, N3.DataFactory.namedNode(RDF_TYPE), null))
     seen.add(q.object.value)
@@ -57,7 +58,7 @@ export async function generateShEx(turtle: string, baseIri?: string): Promise<st
     const cls = q.object.value
     if (!classPreds.has(cls)) classPreds.set(cls, new Map())
     const pm = classPreds.get(cls)!
-    for (const pq of store.getQuads(q.subject, null, null, null)) {
+    for (const pq of store.match(q.subject, null, null, null)) {
       const pred = pq.predicate.value
       if (pred === RDF_TYPE) continue
       const isLit = pq.object.termType === 'Literal'

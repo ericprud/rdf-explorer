@@ -6,11 +6,12 @@
  * This wrapper collects quads and resolves when parsing is complete.
  */
 import * as N3 from 'n3'
+import type { Quad, DatasetCore } from '@rdfjs/types'
 
 const BASE_IRI = 'https://example.org/upload/'
 
 export interface ParseResult {
-  quads:    N3.Quad[]
+  quads:    Quad[]
   prefixes: Record<string, string>
 }
 
@@ -19,7 +20,7 @@ export function parseTurtle(
   baseIri: string = BASE_IRI
 ): Promise<ParseResult> {
   return new Promise((resolve, reject) => {
-    const quads: N3.Quad[] = []
+    const quads: Quad[] = []
     const parser = new N3.Parser({ baseIRI: baseIri, format: 'text/turtle' })
 
     parser.parse(turtle, (err, quad, prefixes) => {
@@ -40,13 +41,13 @@ export function parseTurtle(
   })
 }
 
-/** Convenience: parse directly into an N3.Store */
+/** Convenience: parse directly into an RDF/JS DatasetCore. */
 export async function parseIntoStore(
   turtle: string,
   baseIri: string = BASE_IRI
-): Promise<{ store: N3.Store; prefixes: Record<string, string> }> {
+): Promise<{ store: DatasetCore; prefixes: Record<string, string> }> {
   const { quads, prefixes } = await parseTurtle(turtle, baseIri)
   const store = new N3.Store()
-  store.addQuads(quads)
+  store.addQuads(quads as N3.Quad[])
   return { store, prefixes }
 }

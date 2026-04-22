@@ -404,7 +404,7 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
   try {
     const { store, prefixes: parsedPrefixes } = await parseIntoStore(turtle, baseIri)
 
-    n3Store  = store
+    n3Store  = store as N3.Store
     prefixes = parsedPrefixes
     // Re-expand loader rendering prefs now we have the Turtle's full prefix map.
     const turtlePfx = normalisePrefixes(prefixes)

@@ -1,8 +1,8 @@
 /**
- * Build D3 graph data (GraphData) directly from a parsed N3.Store.
+ * Build D3 graph data (GraphData) from an RDF/JS DatasetCore.
  * No re-parsing required — avoids the double-parse from the old pipeline.
  */
-import * as N3 from 'n3'
+import type { DatasetCore } from '@rdfjs/types'
 
 export interface GraphNode {
   id:        string
@@ -60,11 +60,11 @@ const RDF_TYPE   = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 const RDFS_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 
 /**
- * Build GraphData (nodes + edges for D3) directly from a parsed N3.Store.
+ * Build GraphData (nodes + edges for D3) from an RDF/JS DatasetCore.
  * Prefixes are used for IRI shortening only.
  */
 export function buildGraphData(
-  store:    N3.Store,
+  store:    DatasetCore,
   prefixes: Record<string, string> = {},
 ): GraphData {
   const pfxs = { ...WELL_KNOWN, ...prefixes }

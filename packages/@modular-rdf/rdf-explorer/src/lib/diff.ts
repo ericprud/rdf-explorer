@@ -1,30 +1,30 @@
 /**
  * Turtle Diff – triple-level comparison of two Turtle documents
  */
-import * as N3 from 'n3'
+import type { Quad } from '@rdfjs/types'
 import { parseTurtle } from '@modular-rdf/rdf-utils'
 
 export interface TripleDiff {
-  added:     N3.Quad[]
-  removed:   N3.Quad[]
+  added:     Quad[]
+  removed:   Quad[]
   unchanged: number
 }
 
-function quadKey(q: N3.Quad): string {
+function quadKey(q: Quad): string {
   return `${q.subject.value}\x00${q.predicate.value}\x00${q.object.value}`
 }
 
 export async function diffTurtle(prev: string, next: string): Promise<TripleDiff> {
   const [prevResult, nextResult] = await Promise.all([
-    parseTurtle(prev).catch(() => ({ quads: [] as N3.Quad[], prefixes: {} })),
-    parseTurtle(next).catch(() => ({ quads: [] as N3.Quad[], prefixes: {} })),
+    parseTurtle(prev).catch(() => ({ quads: [] as Quad[], prefixes: {} })),
+    parseTurtle(next).catch(() => ({ quads: [] as Quad[], prefixes: {} })),
   ])
 
   const prevKeys = new Map(prevResult.quads.map(q => [quadKey(q), q]))
   const nextKeys = new Map(nextResult.quads.map(q => [quadKey(q), q]))
 
-  const added:   N3.Quad[] = []
-  const removed: N3.Quad[] = []
+  const added:   Quad[] = []
+  const removed: Quad[] = []
   let unchanged = 0
 
   for (const [k, q] of nextKeys) {
@@ -47,7 +47,7 @@ export function renderDiffHtml(diff: TripleDiff, prefixes: Record<string, string
     return m ? decodeURIComponent(m[1]) : iri
   }
 
-  function renderQuad(q: N3.Quad): string {
+  function renderQuad(q: Quad): string {
     const s = short(q.subject.value)
     const p = short(q.predicate.value)
     const o = q.object.termType === 'Literal'

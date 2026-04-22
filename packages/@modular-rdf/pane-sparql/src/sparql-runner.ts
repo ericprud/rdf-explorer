@@ -3,6 +3,7 @@
  * Handles SELECT/WHERE with basic triple patterns and LIMIT.
  */
 import * as N3 from 'n3'
+import type { DatasetCore, Term } from '@modular-rdf/graph-handler-api'
 import { parseIntoStore } from '@modular-rdf/rdf-utils'
 
 export interface SparqlBinding { [v: string]: string }
@@ -11,7 +12,7 @@ export interface SparqlResult  { variables: string[]; bindings: SparqlBinding[];
 export async function buildN3Store(
   turtle: string,
   baseIri = 'https://example.org/upload/'
-): Promise<N3.Store> {
+): Promise<DatasetCore> {
   try {
     const { store } = await parseIntoStore(turtle, baseIri)
     return store
@@ -21,7 +22,7 @@ export async function buildN3Store(
 }
 
 export function runSparqlSelect(
-  store:           N3.Store,
+  store:           DatasetCore,
   query:           string,
   prefixOverrides: Record<string, string> = {},
 ): SparqlResult {
@@ -49,7 +50,7 @@ function extractVars(query: string): string[] {
 // ── Basic graph-pattern evaluator ───────────────────────────────────────────
 interface TPattern { s: string; p: string; o: string }
 
-function evalBGP(store: N3.Store, query: string, _vars: string[], prefixOverrides: Record<string,string> = {}): SparqlBinding[] {
+function evalBGP(store: DatasetCore, query: string, _vars: string[], prefixOverrides: Record<string,string> = {}): SparqlBinding[] {
   const wm = query.match(/WHERE\s*\{([\s\S]+?)\}/si)
   if (!wm) return []
   const patterns = parsePatterns(wm[1], prefixOverrides)
@@ -66,14 +67,14 @@ function evalBGP(store: N3.Store, query: string, _vars: string[], prefixOverride
 
       const ss = rs ? N3.DataFactory.namedNode(rs) : null
       const pp = rp ? N3.DataFactory.namedNode(rp) : null
-      let oo: N3.Term | null = null
+      let oo: Term | null = null
       if (ro) {
         oo = ro.startsWith('"')
           ? N3.DataFactory.literal(ro.slice(1, ro.lastIndexOf('"')))
           : N3.DataFactory.namedNode(ro)
       }
 
-      for (const q of store.getQuads(ss, pp, oo, null)) {
+      for (const q of store.match(ss, pp, oo, null)) {
         const nb: SparqlBinding = { ...b }
         if (isVar(pat.s)) nb[pat.s.slice(1)] = q.subject.value
         if (isVar(pat.p)) nb[pat.p.slice(1)] = q.predicate.value

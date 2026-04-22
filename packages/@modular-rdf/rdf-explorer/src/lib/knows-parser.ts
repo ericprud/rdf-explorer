@@ -118,16 +118,10 @@ class KnowsLoader implements GraphSource {
     rdf:  NS_RDF,
   }
 
-  readonly typeColors: Record<string, string> = {
-    'foaf:Person': '#4f9cf9',
-  }
-
-  readonly typeRadii: Record<string, number> = {
-    'foaf:Person': 10,
-  }
-
-  readonly hullFills: Record<string, string> = {
-    'foaf:Person': 'rgba(79,156,249,0.07)',
+  readonly renderingPreferences = {
+    typeColors: { 'foaf:Person': '#4f9cf9' },
+    typeRadii:  { 'foaf:Person': 10 },
+    hullFills:  { 'foaf:Person': 'rgba(79,156,249,0.07)' },
   }
 
   private baseIri    = BASE

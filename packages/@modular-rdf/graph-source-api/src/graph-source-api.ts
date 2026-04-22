@@ -114,17 +114,23 @@ export interface GraphSource {
   setBaseIri?(baseIri: string): void
 
   /**
-   * Prefix map used to expand typeColors / typeRadii / hullFills keys.
+   * Prefix map used to expand renderingPreferences keys.
    * Format: { prefixLabel: namespaceUri }
    */
   prefixes?: Record<string, string>
 
-  /** Map from type IRI (or prefixed name / <iri>) to a CSS hex colour. */
+  /** Visual hints for the graph renderer. */
+  renderingPreferences?: RenderingPreferences
+}
+
+/** Visual rendering hints keyed by type IRI (or prefixed name / <iri>). */
+export interface RenderingPreferences {
+  /** Map from type IRI to a CSS hex colour. */
   typeColors?: Record<string, string>
 
-  /** Map from type IRI (or prefixed name / <iri>) to a node radius in pixels. */
+  /** Map from type IRI to a node radius in pixels. */
   typeRadii?: Record<string, number>
 
-  /** Map from type IRI (or prefixed name / <iri>) to a convex-hull CSS fill. */
+  /** Map from type IRI to a convex-hull CSS fill. */
   hullFills?: Record<string, string>
 }

@@ -410,9 +410,10 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
     const turtlePfx = normalisePrefixes(prefixes)
     for (const loader of getLoaders()) {
       const combined = { ...turtlePfx, ...(loader.prefixes ?? {}) }
-      if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, combined))
-      if (loader.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(loader.typeRadii,  combined))
-      if (loader.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(loader.hullFills,  combined))
+      const rp       = loader.renderingPreferences
+      if (rp?.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(rp.typeColors, combined))
+      if (rp?.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(rp.typeRadii,  combined))
+      if (rp?.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(rp.hullFills,  combined))
     }
     refreshRdfsLabels()
 

@@ -46,9 +46,10 @@ export function buildLoaderPanels(
     // Delegate all DOM construction (drop-zone, controls) to the loader itself
     loader.buildPanel(wrapper, applyGraph)
     loader.setBaseIri?.(baseIri)
-    const pfx = loader.prefixes ?? {}
-    if (loader.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(loader.typeColors, pfx))
-    if (loader.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(loader.typeRadii,  pfx))
-    if (loader.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(loader.hullFills,  pfx))
+    const pfx  = loader.prefixes ?? {}
+    const rp   = loader.renderingPreferences
+    if (rp?.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(rp.typeColors, pfx))
+    if (rp?.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(rp.typeRadii,  pfx))
+    if (rp?.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(rp.hullFills,  pfx))
   }
 }

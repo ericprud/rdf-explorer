@@ -7,6 +7,9 @@
     ".": "./src/graph-source-api.ts"
   },
   "types": "./src/graph-source-api.ts",
+  "devDependencies": {
+    "@rdfjs/types": "^2.0.1"
+  },
   "files": ["src"],
   "publishConfig": {
     "access": "public"

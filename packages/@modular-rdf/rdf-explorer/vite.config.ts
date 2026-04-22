@@ -27,6 +27,7 @@ export default defineConfig({
     }
   },
   server: {
+    port: parseInt(process.env.PORT ?? '5173'),
     watch: { usePolling: false },
     hmr: true,
     headers: { 'Cache-Control': 'no-store' }

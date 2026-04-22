@@ -24,32 +24,13 @@
  * `buildPanel(container, applyGraph)` is called once by the host.
  */
 
-// ── Minimal structural RDF/JS types ─────────────────────────────────────────
-// Defined here so graph-source-api stays dependency-free.
-// N3.Store satisfies RdfDataset structurally.
+// ── RDF/JS standard types (re-exported from @rdfjs/types) ───────────────────
+// Term   = NamedNode | BlankNode | Literal | Variable | DefaultGraph | BaseQuad
+// BaseQuad has subject/predicate/object/graph; N3.Quad satisfies it.
+// DatasetCore<Q> is the standard dataset interface; N3.Store satisfies DatasetCore<Quad>.
 
-export interface RdfTerm {
-  readonly termType: string
-  readonly value:    string
-}
-
-export interface RdfQuad {
-  readonly subject:   RdfTerm
-  readonly predicate: RdfTerm
-  readonly object:    RdfTerm
-  readonly graph:     RdfTerm
-}
-
-/** Minimal RDF/JS DatasetCore interface. N3.Store satisfies this structurally. */
-export interface RdfDataset extends Iterable<RdfQuad> {
-  readonly size: number
-  match(
-    subject?:   RdfTerm | null,
-    predicate?: RdfTerm | null,
-    object?:    RdfTerm | null,
-    graph?:     RdfTerm | null,
-  ): Iterable<RdfQuad>
-}
+import type { DatasetCore } from '@rdfjs/types'
+export type { Term, BaseQuad, DatasetCore } from '@rdfjs/types'
 
 // ── Resolver context ─────────────────────────────────────────────────────────
 
@@ -76,7 +57,7 @@ export interface ApplyGraphText {
 
 /** Source delivers a pre-parsed RDF/JS dataset. */
 export interface ApplyGraphStore {
-  store: RdfDataset
+  store: DatasetCore
   /** BASE and PREFIX context for label shortening and re-serialisation. */
   ctx?:  ResolverContext
 }

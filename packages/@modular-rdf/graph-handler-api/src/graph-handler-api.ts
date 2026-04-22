@@ -25,9 +25,9 @@
  * GraphSources use, so any handler can push new RDF into the pipeline.
  */
 
-import type { ApplyGraphInput, RdfDataset } from '@modular-rdf/graph-source-api'
+import type { ApplyGraphInput, DatasetCore } from '@modular-rdf/graph-source-api'
 export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphStore,
-              RdfDataset, RdfTerm, RdfQuad, ResolverContext } from '@modular-rdf/graph-source-api'
+              Term, BaseQuad, DatasetCore, ResolverContext } from '@modular-rdf/graph-source-api'
 
 // ── Shared state snapshot ────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphSto
  */
 export interface HandlerState {
   /** Parsed RDF dataset (null until data has been loaded). N3.Store satisfies this. */
-  store:      RdfDataset | null
+  store:      DatasetCore | null
   /** Prefix map from the parsed source: { prefixLabel → namespaceUri }. */
   prefixes:   Record<string, string>
   /** rdfs:label map: full IRI → label string. */

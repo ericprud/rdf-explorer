@@ -78,7 +78,7 @@ LIMIT 50</textarea>
   }
 
   update(state: HandlerState): void {
-    // N3.Store satisfies RdfDataset — the cast is safe for our callers.
+    // N3.Store satisfies DatasetCore — the cast is safe for our callers.
     this.store    = state.store as N3.Store | null
     this.prefixes = state.prefixes
     this.baseIri  = state.baseIri

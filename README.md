@@ -76,7 +76,7 @@ The header badge shows:
 - **amber dot** — bundle built at `[time]` (dev mode placeholder)
 
 During `npm run dev`, Vite serves with `Cache-Control: no-store` so reloading the
-page always picks up your latest spreadsheet parse. Each load shows a new SHA-256
+page always picks up your latest module source code. Each load shows a new SHA-256
 hash so you can confirm a different file was processed.
 
 ## Development

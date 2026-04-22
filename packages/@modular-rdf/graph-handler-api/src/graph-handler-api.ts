@@ -27,7 +27,7 @@
 
 import type { ApplyGraphInput, DatasetCore } from '@modular-rdf/graph-source-api'
 export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphStore,
-              Term, BaseQuad, DatasetCore, ResolverContext } from '@modular-rdf/graph-source-api'
+              Term, Quad, DatasetCore, ResolverContext } from '@modular-rdf/graph-source-api'
 
 // ── Shared state snapshot ────────────────────────────────────────────────────
 

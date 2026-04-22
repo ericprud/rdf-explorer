@@ -25,12 +25,11 @@
  */
 
 // ── RDF/JS standard types (re-exported from @rdfjs/types) ───────────────────
-// Term   = NamedNode | BlankNode | Literal | Variable | DefaultGraph | BaseQuad
-// BaseQuad has subject/predicate/object/graph; N3.Quad satisfies it.
-// DatasetCore<Q> is the standard dataset interface; N3.Store satisfies DatasetCore<Quad>.
+// Quad has positionally-typed s/p/o/g fields; N3.Quad satisfies it.
+// DatasetCore is the minimal dataset interface (includes [Symbol.iterator]); N3.Store satisfies it.
 
 import type { DatasetCore } from '@rdfjs/types'
-export type { Term, BaseQuad, DatasetCore } from '@rdfjs/types'
+export type { Term, Quad, DatasetCore } from '@rdfjs/types'
 
 // ── Resolver context ─────────────────────────────────────────────────────────
 

@@ -11,9 +11,11 @@
  * bundle each loader with all its dependencies — including npm packages —
  * fully inlined, so the output has no bare specifiers at all.
  *
- * knows-parser.js   ~  10 KB   (no npm deps, only local files inlined)
+ * util-rdf.js        ~  shared RDF utilities; externalises n3 (provided via importmap)
+ * knows-parser.js    ~  "Alice knows Bob." DSL; externalises n3 + @modular-rdf/util-rdf
  *
  * OUTPUT
+ *   public/loaders/util-rdf.js
  *   public/loaders/knows-parser.js
  *
  * USAGE
@@ -35,11 +37,18 @@ mkdirSync(outdir, { recursive: true })
 
 const loaders = [
   {
+    label:      'util-rdf',
+    entryPoint: resolve(root, '..', 'util-rdf', 'src', 'util-rdf.ts'),
+    outfile:    resolve(outdir, 'util-rdf.js'),
+    // n3 is provided by the host via importmap → esm.sh
+    external:   ['n3'],
+  },
+  {
     label:      'knows parser',
     entryPoint: resolve(root, 'src', 'lib', 'knows-parser.ts'),
     outfile:    resolve(outdir, 'knows-parser.js'),
-    // No npm deps — only local files are inlined.
-    external:   [],
+    // n3 and util-rdf are provided by the host via importmap
+    external:   ['n3', '@modular-rdf/util-rdf'],
   },
 ]
 

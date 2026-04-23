@@ -1,0 +1,11 @@
+{
+  "name": "@modular-rdf/pane-diff",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/pane-diff.ts",
+  "dependencies": {
+    "@modular-rdf/api-graph-handler": "*",
+    "@modular-rdf/util-rdf": "*"
+  }
+}

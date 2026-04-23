@@ -106,7 +106,7 @@ export interface GraphHandler {
    * before calling this.
    * Implement this to receive raw source text (e.g. a Turtle editor pane).
    */
-  updateText?(text: string, format?: 'turtle' | 'trig'): void
+  updateText?(text: string, format?: 'turtle' | 'trig', filename?: string): void
 
   /**
    * Optional: called when the user switches to this pane's tab.

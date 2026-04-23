@@ -7,11 +7,12 @@
 
 import { registerHandler } from './handler-registry'
 import type { GraphHandler } from '@modular-rdf/api-graph-handler'
-import { handler as graphHandlerImpl    } from '@modular-rdf/pane-graph'
-import { handler as turtleHandlerImpl   } from '@modular-rdf/pane-turtle'
-import { handler as sparqlHandlerImpl   } from '@modular-rdf/pane-sparql'
-import { handler as shexHandlerImpl     } from '@modular-rdf/pane-shex'
+import { handler as graphHandlerImpl     } from '@modular-rdf/pane-graph'
+import { handler as turtleHandlerImpl    } from '@modular-rdf/pane-turtle'
+import { handler as sparqlHandlerImpl    } from '@modular-rdf/pane-sparql'
+import { handler as shexHandlerImpl      } from '@modular-rdf/pane-shex'
 import { handler as inferenceHandlerImpl } from '@modular-rdf/pane-inference'
+import { handler as diffHandlerImpl      } from '@modular-rdf/pane-diff'
 
 // ── Built-in pane handlers ────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ export const turtleHandler:    GraphHandler = turtleHandlerImpl
 export const sparqlHandler:    GraphHandler = sparqlHandlerImpl
 export const shexHandler:      GraphHandler = shexHandlerImpl
 export const inferenceHandler: GraphHandler = inferenceHandlerImpl
+export const diffHandler:      GraphHandler = diffHandlerImpl
 
 /** The ordered list of panes shown at startup. */
 export const BUILTIN_HANDLERS: GraphHandler[] = [
@@ -28,6 +30,7 @@ export const BUILTIN_HANDLERS: GraphHandler[] = [
   sparqlHandler,
   shexHandler,
   inferenceHandler,
+  diffHandler,
 ]
 
 /**

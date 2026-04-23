@@ -33,12 +33,13 @@ export class ShExWorkerClient {
     this.pending = new Map()
     this.nextId  = 1
 
-    // Vite handles `new Worker(new URL(…, import.meta.url), { type: 'module' })`
-    // and emits a separate chunk for the worker script.
-    this.worker = new Worker(
-      new URL('./shex-worker.ts', import.meta.url),
-      { type: 'module' },
-    )
+    // When loaded via blob: URL (drag-and-drop) import.meta.url can't be used for
+    // relative resolution; fall back to the pre-built sibling in loaders/.
+    // Vite dev-server resolves ./shex-worker.js → shex-worker.ts on the fly.
+    const workerUrl = import.meta.url.startsWith('blob:')
+      ? new URL('panes/shex-worker.js', document.baseURI)
+      : new URL('./shex-worker.js', import.meta.url)
+    this.worker = new Worker(workerUrl, { type: 'module' })
 
     // The worker posts { type: 'ready' } as soon as it loads.
     this.ready = new Promise<void>(resolve => {

@@ -33,8 +33,8 @@ export function getHandlers(): GraphHandler[] {
 }
 
 /**
- * Register a handler.  If a handler with the same name already exists it is
- * replaced in-place (re-uploading an updated handler works as expected).
+ * Register a handler, replacing any existing handler with the same name.
+ * Used at init time for config URL overrides and built-in registration.
  */
 export function registerHandler(handler: GraphHandler): void {
   const idx = _handlers.findIndex(h => h.name === handler.name)
@@ -48,9 +48,19 @@ export function registerHandler(handler: GraphHandler): void {
 }
 
 /**
+ * Append a handler without deduplication.
+ * Used for drop-zone drops — allows multiple instances of the same handler.
+ */
+export function appendHandler(handler: GraphHandler): void {
+  _handlers.push(handler)
+  notify()
+}
+
+/**
  * Load a GraphHandler from a Blob URL that resolves to an ES module.
  * The module must export `handler` (named) or `default`.
- * Validates the export, registers the handler, and returns it.
+ * Validates the export and returns the handler — does NOT register it.
+ * Callers choose whether to call registerHandler() or appendHandler().
  */
 export async function loadHandlerFromBlob(blobUrl: string): Promise<GraphHandler> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,6 +80,5 @@ export async function loadHandlerFromBlob(blobUrl: string): Promise<GraphHandler
     throw new Error('GraphHandler must implement update(state).')
   }
 
-  registerHandler(candidate)
   return candidate
 }

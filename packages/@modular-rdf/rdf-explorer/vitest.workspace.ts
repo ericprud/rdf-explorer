@@ -10,6 +10,7 @@ const apiAlias = {
   '@modular-rdf/pane-graph':        resolve(__dirname, '../pane-graph/src/pane-graph.ts'),
   '@modular-rdf/pane-turtle':       resolve(__dirname, '../pane-turtle/src/pane-turtle.ts'),
   '@modular-rdf/pane-shex':         resolve(__dirname, '../pane-shex/src/pane-shex.ts'),
+  '@modular-rdf/pane-diff':         resolve(__dirname, '../pane-diff/src/pane-diff.ts'),
 }
 
 export default defineWorkspace([

@@ -21,7 +21,8 @@
       "@modular-rdf/pane-inference":    ["../pane-inference/src/pane-inference.ts"],
       "@modular-rdf/pane-graph":        ["../pane-graph/src/pane-graph.ts"],
       "@modular-rdf/pane-turtle":       ["../pane-turtle/src/pane-turtle.ts"],
-      "@modular-rdf/pane-shex":         ["../pane-shex/src/pane-shex.ts"]
+      "@modular-rdf/pane-shex":         ["../pane-shex/src/pane-shex.ts"],
+      "@modular-rdf/pane-diff":         ["../pane-diff/src/pane-diff.ts"]
     }
   },
   "include": ["src"],

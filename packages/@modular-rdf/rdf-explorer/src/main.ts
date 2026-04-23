@@ -24,14 +24,15 @@ import { readHistory }                                        from './lib/graph-
 import { parseRenderConfigJsonLd,
          normalisePrefixes,
          TYPE_COLORS, TYPE_RADII, HULL_FILLS }               from '@modular-rdf/pane-graph'
-import { diffTurtle, renderDiffHtml }                        from './lib/diff'
 import { getLoaders, loadLoaderFromBlob, onLoadersChange }   from './lib/parser-registry'
 import { buildLoaderPanels }                                 from './lib/loader-panels'
 import { resolveTypeKeys }                                   from '@modular-rdf/util-rdf'
-import { getHandlers, loadHandlerFromBlob, onHandlersChange } from './lib/handler-registry'
+import { getHandlers, loadHandlerFromBlob,
+         registerHandler }                                   from './lib/handler-registry'
 import { registerBuiltinHandlers }                           from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
-         updateExternalHandlers }                            from './lib/handler-panels'
+         updateExternalHandlers,
+         getHandlerByPaneId }                               from './lib/handler-panels'
 import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/api-graph-source'
 import type { HandlerCallbacks }                             from '@modular-rdf/api-graph-handler'
 import * as N3                                               from 'n3'
@@ -66,7 +67,12 @@ interface AppConfig {
 
 async function loadConfig(): Promise<AppConfig> {
   const params    = new URLSearchParams(window.location.search)
-  const configUrl = params.get('configURL') ?? './config.json'
+  let   configUrl = params.get('configURL')
+  if (!configUrl) {
+    configUrl = './config.json'
+    params.set('configURL', configUrl)
+    history.replaceState(null, '', `${window.location.pathname}?${params}${window.location.hash}`)
+  }
   const resolved  = new URL(configUrl, window.location.href).href
   try {
     const res = await fetch(resolved)
@@ -148,8 +154,6 @@ document.querySelector('#app')!.innerHTML = `
 
 // ── App state ─────────────────────────────────────────────────────────────────
 let currentTurtle    = ''
-let prevTurtle       = ''
-let prevFilename     = ''
 let currentFilename  = ''
 let n3Store:      N3.Store | null = null
 let prefixes:     Record<string, string> = {}
@@ -218,7 +222,6 @@ async function init(): Promise<void> {
     const tab = document.createElement('div')
     tab.className   = `tab${isFirst ? ' active' : ''}`
     tab.dataset.tab = entry.name
-    if (entry.name === 'diff') tab.id = 'diff-tab'
     if (entry.hidden) tab.style.display = 'none'
     tab.textContent = entry.label
     tabsEl.insertBefore(tab, tabSpacer)
@@ -226,14 +229,6 @@ async function init(): Promise<void> {
     const pane = document.createElement('div')
     pane.className    = `pane${isFirst ? ' active' : ''}`
     pane.dataset.pane = entry.name
-    if (entry.name === 'diff') {
-      pane.innerHTML = `
-        <div class="pane-toolbar flex-row">
-          <span class="mono text-xs text-muted grow">Triple-level diff: previous load vs current</span>
-          <span class="mono text-xs text-muted" id="diff-filenames"></span>
-        </div>
-        <div id="diff-content" class="diff-pane pane-scroll-host"></div>`
-    }
     contentEl.appendChild(pane)
   }
 
@@ -242,7 +237,8 @@ async function init(): Promise<void> {
     if (!entry.url) continue
     try {
       const url = new URL(entry.url, window.location.href).href
-      await loadHandlerFromBlob(url)
+      const h = await loadHandlerFromBlob(url)
+      registerHandler(h)
     } catch (e) {
       toast(`Failed to load handler '${entry.name}': ${e instanceof Error ? e.message : e}`, 'error')
     }
@@ -273,12 +269,6 @@ async function init(): Promise<void> {
     }
   }
 
-  // Now safe to wire up the handler-change listener (only fires for post-init drops)
-  onHandlersChange(handlers => {
-    for (const h of handlers) {
-      mountExternalHandler(h, tabsEl, contentEl, handlerCallbacks, switchTab)
-    }
-  })
 }
 
 init().catch(e => console.error('[init]', e))
@@ -307,13 +297,11 @@ function handleApplyGraph(input: ApplyGraphInput | string): void {
     const writer = new N3.Writer({ prefixes: ctx?.prefixes ?? {} })
     for (const q of store as Iterable<N3.Quad>) writer.addQuad(q)
     writer.end((_err, turtle) => {
-      if (currentTurtle) { prevTurtle = currentTurtle; prevFilename = currentFilename }
       currentTurtle = turtle
       applyTurtle(turtle)
     })
   } else {
     const { text, filename } = input
-    if (currentTurtle) { prevTurtle = currentTurtle; prevFilename = currentFilename }
     currentTurtle   = text
     currentFilename = filename ?? currentFilename
     applyTurtle(text)
@@ -394,11 +382,6 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
 
 // ── Core Turtle → graph pipeline ─────────────────────────────────────────────
 async function applyTurtle(turtle: string, filename?: string): Promise<void> {
-  if (prevTurtle !== currentTurtle) {
-    prevTurtle    = currentTurtle
-    prevFilename  = currentFilename
-  }
-  currentTurtle = turtle
   if (filename) currentFilename = filename
 
   try {
@@ -419,15 +402,10 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
 
     document.getElementById('btn-download')!.style.display = ''
 
-    if (prevTurtle && prevTurtle !== turtle) {
-      document.getElementById('diff-tab')?.style && (document.getElementById('diff-tab')!.style.display = '')
-      renderDiff()
-    }
-
     updateExternalHandlers(
       getHandlers(),
       { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
-      { text: turtle, format: 'turtle' },
+      { text: turtle, format: 'turtle', filename: currentFilename },
     )
   } catch (e) {
     toastError('Error applying Turtle', e)
@@ -451,6 +429,7 @@ function switchTab(name: string): void {
   // Deactivate previous handler
   if (activeHandlerName !== name) {
     const prevHandler = getHandlers().find(x => x.name === activeHandlerName)
+                     ?? getHandlerByPaneId(activeHandlerName)
     prevHandler?.onDeactivate?.()
   }
 
@@ -463,6 +442,7 @@ function switchTab(name: string): void {
 
   // Activate new handler with sidebar section
   const newHandler = getHandlers().find(x => x.name === name)
+                  ?? getHandlerByPaneId(name)
   newHandler?.onActivate?.(sidebarPaneSection)
 }
 
@@ -558,15 +538,6 @@ document.getElementById('btn-download')!.addEventListener('click', () => {
       )
     }
   })
-}
-
-// ── Diff ──────────────────────────────────────────────────────────────────────
-async function renderDiff(): Promise<void> {
-  if (!prevTurtle || !currentTurtle) return
-  document.getElementById('diff-content')!.innerHTML = `<div class="mono text-xs text-muted" style="padding:12px">Computing diff…</div>`
-  const diff = await diffTurtle(prevTurtle, currentTurtle)
-  document.getElementById('diff-content')!.innerHTML = renderDiffHtml(diff, prefixes)
-  document.getElementById('diff-filenames')!.textContent = `${prevFilename || 'previous'} → ${currentFilename}`
 }
 
 // ── Base IRI input ───────────────────────────────────────────────────────────

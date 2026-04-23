@@ -5,7 +5,7 @@
     { "name": "sparql",    "label": "SPARQL" },
     { "name": "shex",      "label": "ShEx" },
     { "name": "inference", "label": "Type Inference" },
-    { "name": "diff",      "label": "Diff", "hidden": true }
+    { "name": "diff",      "label": "Diff" }
   ],
   "graphSources": [
     { "url": "./loaders/knows-parser.js" }

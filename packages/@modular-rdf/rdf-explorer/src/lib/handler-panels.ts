@@ -14,7 +14,16 @@
 
 import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/api-graph-handler'
 import type { ApplyGraphCallback } from '@modular-rdf/api-graph-source'
-import { loadHandlerFromBlob } from './handler-registry'
+import { loadHandlerFromBlob, appendHandler } from './handler-registry'
+
+// ── Pane instance tracking ────────────────────────────────────────────────────
+let _paneCounter = 0
+const _paneHandlers = new Map<string, GraphHandler>()
+
+/** Look up a dynamically dropped handler by its load-order pane id (e.g. 'pane0'). */
+export function getHandlerByPaneId(paneId: string): GraphHandler | undefined {
+  return _paneHandlers.get(paneId)
+}
 
 
 // ── Drop zone ─────────────────────────────────────────────────────────────────
@@ -92,8 +101,9 @@ async function loadHandlerFile(
   const url = URL.createObjectURL(new Blob([await file.text()], { type: 'application/javascript' }))
   try {
     const handler = await loadHandlerFromBlob(url)
+    appendHandler(handler)
     mountExternalHandler(handler, tabsEl, contentEl, callbacks, switchTab)
-    onToast(`Handler registered: ${handler.label ?? handler.name}`, 'success')
+    onToast(`Handler loaded: ${handler.label ?? handler.name}`, 'success')
   } catch (err) {
     onToast(`Handler load failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
   } finally {
@@ -104,10 +114,9 @@ async function loadHandlerFile(
 // ── Dynamic tab + pane creation ───────────────────────────────────────────────
 
 /**
- * For an external (non-built-in) handler, create a new tab button and pane
- * div, then call `handler.mount()`.
- * Safe to call multiple times — if the handler was already mounted, its
- * container is re-used (supports hot-swap when re-uploading an updated handler).
+ * Create a new tab + pane for a dropped handler.
+ * Always creates a fresh pane — multiple drops of the same handler name each
+ * get their own pane with a unique load-order id (pane0, pane1, …).
  */
 export function mountExternalHandler(
   handler:   GraphHandler,
@@ -116,32 +125,22 @@ export function mountExternalHandler(
   callbacks: HandlerCallbacks,
   switchTab: (name: string) => void,
 ): void {
-  const label = handler.label ?? handler.name
+  const paneId = `pane${_paneCounter++}`
+  const label  = handler.label ?? handler.name
 
-  // If a pane already exists (created by config or a prior mount), hot-swap it.
-  const existingPane = contentEl.querySelector<HTMLElement>(`[data-pane="${handler.name}"]`)
-  if (existingPane) {
-    existingPane.innerHTML = ''
-    const tabEl = tabsEl.querySelector<HTMLElement>(`[data-tab="${handler.name}"]`)
-    if (tabEl) tabEl.textContent = label
-    handler.mount(existingPane, callbacks)
-    return
-  }
+  _paneHandlers.set(paneId, handler)
 
-  // Truly new handler: create tab + pane.
   const paneEl = document.createElement('div')
-  paneEl.className   = 'pane'
-  paneEl.dataset.pane = handler.name
+  paneEl.className    = 'pane'
+  paneEl.dataset.pane = paneId
   contentEl.appendChild(paneEl)
 
   const tabEl = document.createElement('div')
-  tabEl.className   = 'tab'
-  tabEl.dataset.tab = handler.name
-  tabEl.textContent = label
-  tabEl.addEventListener('click', () => switchTab(handler.name))
-  // Insert before the diff tab if present, else before the spacer, else append.
-  const anchor = tabsEl.querySelector<HTMLElement>('[data-tab="diff"]')
-               ?? tabsEl.querySelector<HTMLElement>('.tab-spacer')
+  tabEl.className    = 'tab'
+  tabEl.dataset.tab  = paneId
+  tabEl.textContent  = label
+  tabEl.addEventListener('click', () => switchTab(paneId))
+  const anchor = tabsEl.querySelector<HTMLElement>('.tab-spacer')
   if (anchor) tabsEl.insertBefore(tabEl, anchor)
   else        tabsEl.appendChild(tabEl)
 
@@ -160,12 +159,12 @@ export function mountExternalHandler(
 export function updateExternalHandlers(
   handlers: GraphHandler[],
   state:    HandlerState,
-  text?:    { text: string; format?: 'turtle' | 'trig' },
+  text?:    { text: string; format?: 'turtle' | 'trig'; filename?: string },
 ): void {
   for (const h of handlers) {
     try { h.update(state) } catch (e) { console.error(`[handler:${h.name}] update() threw`, e) }
     if (text && h.updateText) {
-      try { h.updateText(text.text, text.format) } catch (e) { console.error(`[handler:${h.name}] updateText() threw`, e) }
+      try { h.updateText(text.text, text.format, text.filename) } catch (e) { console.error(`[handler:${h.name}] updateText() threw`, e) }
     }
   }
 }

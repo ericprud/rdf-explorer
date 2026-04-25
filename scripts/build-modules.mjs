@@ -15,16 +15,19 @@
  * shex-worker.js is the exception: Web Workers don't inherit import maps in all
  * browsers, so it bundles all its deps (including @shexjs/* and n3) inline.
  *
- * OUTPUT  (→ packages/@modular-rdf/rdf-explorer/public/loaders/)
- *   util-rdf.js        shared RDF utilities          ~  4 KB  external: n3
- *   knows-parser.js    "Alice knows Bob." DSL         ~  5 KB  external: n3, util-rdf
- *   pane-graph.js      force-directed graph view      ~ ??     external: n3, util-rdf
- *   pane-turtle.js     Turtle editor (CodeMirror)     ~ ??     external: n3, util-rdf
- *   pane-sparql.js     SPARQL SELECT pane             ~  8 KB  external: n3, util-rdf
- *   shex-worker.js     ShEx worker thread             ~886 KB  external: (none)
- *   pane-shex.js       ShEx validation pane           ~863 KB  external: n3, util-rdf
- *   pane-inference.js  RDFS/OWL type inference pane   ~ ??     external: n3, util-rdf
- *   pane-diff.js       Triple-level diff pane         ~ ??     external: n3, util-rdf
+ * OUTPUT
+ *   public/panes/
+ *     util-rdf.js        shared RDF utilities          ~  4 KB  external: n3
+ *     pane-graph.js      force-directed graph view      ~ ??     external: n3, util-rdf
+ *     pane-turtle.js     Turtle editor (CodeMirror)     ~ ??     external: n3, util-rdf
+ *     pane-sparql.js     SPARQL SELECT pane             ~  8 KB  external: n3, util-rdf
+ *     shex-worker.js     ShEx worker thread             ~886 KB  external: (none)
+ *     pane-shex.js       ShEx validation pane           ~863 KB  external: n3, util-rdf
+ *     pane-inference.js  RDFS/OWL type inference pane   ~ ??     external: n3, util-rdf
+ *     pane-diff.js       Triple-level diff pane         ~ ??     external: n3, util-rdf
+ *   public/loaders/
+ *     knows-parser.js    "Alice knows Bob." DSL parser  ~  5 KB  external: n3, util-rdf
+ *     pane-knows.js      foaf:knows round-trip viewer   ~ ??     external: n3, util-rdf
  *
  * USAGE
  *   node scripts/build-modules.mjs            # one-shot
@@ -112,6 +115,14 @@ const modules = [
     label:      'pane-diff',
     entryPoint: resolve(pkgs, 'pane-diff',      'src', 'pane-diff.ts'),
     outfile:    resolve(panes,'pane-diff.js'),
+    external:   HOST_EXTERNALS,
+  },
+
+  // ── Example GraphHandler — parallel to knows-parser in loaders/ ─────────────
+  {
+    label:      'pane-knows',
+    entryPoint: resolve(pkgs, 'rdf-explorer', 'src', 'lib', 'knows-handler.ts'),
+    outfile:    resolve(panes, 'pane-knows.js'),
     external:   HOST_EXTERNALS,
   },
 ]

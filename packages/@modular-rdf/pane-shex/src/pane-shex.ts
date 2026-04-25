@@ -243,38 +243,45 @@ class ShExPaneHandler implements GraphHandler {
     let pass = 0, fail = 0, done = 0
     this.callbacks?.toast('Validating…', 'info')
 
-    outer:
-    for (const [typeIri, quads] of byType) {
-      const shortName  = this.labelNode(typeIri)
-      const typeHeader = document.createElement('div')
-      typeHeader.className = 'val-type-header'
-      typeHeader.dataset.typeIri = typeIri
-      typeHeader.textContent = shortName
-      out.appendChild(typeHeader)
-      for (const tq of quads) {
-        if (!this.validationRunning) break outer
-        const nodeId = tq.subject.value, shapeId = `${typeIri}Shape`, label = this.labelNode(nodeId)
-        const row = document.createElement('div'); row.className = 'validation-row'
-        row.innerHTML = `<span data-role="icon" style="color:var(--accent-amber)">${Mark_test}</span><div data-role="body"><div class="val-node" title="${esc(nodeId)}">${esc(label)}</div></div>`
-        out.appendChild(row); row.scrollIntoView({ block: 'nearest', behavior: 'auto' })
-        const r = await this.shexWorker!.validate(nodeId, shapeId)
-        if (!this.validationRunning || r.errors[0] === 'aborted') {
-          row.querySelector<HTMLElement>('[data-role="body"]')!.innerHTML = `<div class="val-node">${esc(label)} — cancelled</div>`
-          break outer
+    try {
+      outer:
+      for (const [typeIri, quads] of byType) {
+        const shortName  = this.labelNode(typeIri)
+        const typeHeader = document.createElement('div')
+        typeHeader.className = 'val-type-header'
+        typeHeader.dataset.typeIri = typeIri
+        typeHeader.textContent = shortName
+        out.appendChild(typeHeader)
+        for (const tq of quads) {
+          if (!this.validationRunning) break outer
+          const nodeId = tq.subject.value, shapeId = `${typeIri}Shape`, label = this.labelNode(nodeId)
+          const row = document.createElement('div'); row.className = 'validation-row'
+          row.innerHTML = `<span data-role="icon" style="color:var(--accent-amber)">${Mark_test}</span><div data-role="body"><div class="val-node" title="${esc(nodeId)}">${esc(label)}</div></div>`
+          out.appendChild(row); row.scrollIntoView({ block: 'nearest', behavior: 'auto' })
+          const r = await this.shexWorker!.validate(nodeId, shapeId)
+          if (!this.validationRunning || r.errors[0] === 'aborted') {
+            row.querySelector<HTMLElement>('[data-role="body"]')!.innerHTML = `<div class="val-node">${esc(label)} — cancelled</div>`
+            break outer
+          }
+          done++
+          if (r.passed) { pass++; passedEl.querySelector('[data-role="pass-count"]')!.textContent = String(pass) }
+          else          { fail++; failedEl.querySelector('[data-role="fail-count"]')!.textContent = String(fail) }
+          remainEl.querySelector('[data-role="remain-count"]')!.textContent = String(totalNodes - done)
+          const icon = row.querySelector<HTMLElement>('[data-role="icon"]')!
+          const body = row.querySelector<HTMLElement>('[data-role="body"]')!
+          icon.style.color = r.passed ? 'var(--accent-green)' : 'var(--accent-rose)'
+          icon.innerHTML = r.passed ? Mark_pass : Mark_fail
+          body.innerHTML = `<div class="val-node" title="${esc(nodeId)}">${esc(label)} — ${r.elapsed}ms</div>${r.errors.slice(0,3).map(e => `<div class="val-error">${esc(e.slice(0,200))}</div>`).join('')}`
         }
-        done++
-        if (r.passed) { pass++; passedEl.querySelector('[data-role="pass-count"]')!.textContent = String(pass) }
-        else          { fail++; failedEl.querySelector('[data-role="fail-count"]')!.textContent = String(fail) }
-        remainEl.querySelector('[data-role="remain-count"]')!.textContent = String(totalNodes - done)
-        const icon = row.querySelector<HTMLElement>('[data-role="icon"]')!
-        const body = row.querySelector<HTMLElement>('[data-role="body"]')!
-        icon.style.color = r.passed ? 'var(--accent-green)' : 'var(--accent-rose)'
-        icon.innerHTML = r.passed ? Mark_pass : Mark_fail
-        body.innerHTML = `<div class="val-node" title="${esc(nodeId)}">${esc(label)} — ${r.elapsed}ms</div>${r.errors.slice(0,3).map(e => `<div class="val-error">${esc(e.slice(0,200))}</div>`).join('')}`
       }
+      this.callbacks?.toast(`Validation: ${pass} pass, ${fail} fail`, fail ? 'error' : 'success')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      console.error(msg)
+      this.callbacks?.toast(`Validation error: ${msg}`, 'error')
+      out.innerHTML += `<div class="mono text-xs" style="color:var(--accent-rose);padding:12px">Validation error: ${esc(msg)}</div>`
     }
     this.finishValidation()
-    this.callbacks?.toast(`Validation: ${pass} pass, ${fail} fail`, fail ? 'error' : 'success')
   }
 
   private abortValidation(): void {

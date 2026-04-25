@@ -43,7 +43,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const root    = resolve(__dirname, '..')                             // repo root
 const pkgs    = resolve(root, 'packages', '@modular-rdf')
 const pub     = resolve(pkgs, 'rdf-explorer', 'public')
-const loaders = resolve(pub, 'loaders')   // knows-parser (GraphSource examples)
+const dist    = resolve(pkgs, 'rdf-explorer', 'dist')
+const loaders = resolve(dist, 'loaders')  // knows-parser (GraphSource examples) — served from dist/
 const panes   = resolve(pub, 'panes')     // util-rdf + all pane bundles
 const watch   = process.argv.includes('--watch')
 

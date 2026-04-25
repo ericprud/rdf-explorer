@@ -61,7 +61,20 @@ export function buildBasePanel(
   zone.addEventListener('drop', e => {
     e.preventDefault()
     zone.classList.remove('dragging')
-    for (const f of e.dataTransfer?.files ?? []) onFile(f)
+    for (const f of e.dataTransfer?.files ?? []) {
+      const ext = '.' + (f.name.split('.').pop() ?? '').toLowerCase()
+      if (loader.accepts.includes(ext)) {
+        onFile(f)
+      } else if (ext === '.js' || ext === '.mjs') {
+        // Loader modules go on the "Load" header, not this panel
+        const nameEl = zone.querySelector('.dropzone-hint')
+        if (nameEl) {
+          const prev = nameEl.textContent
+          nameEl.textContent = '⚠ Drop .js loaders on the "Load" header above'
+          setTimeout(() => { nameEl.textContent = prev }, 3000)
+        }
+      }
+    }
   })
   fi.addEventListener('change', () => {
     for (const f of fi.files ?? []) onFile(f)

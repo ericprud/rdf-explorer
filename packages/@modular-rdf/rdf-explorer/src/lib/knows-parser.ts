@@ -35,11 +35,13 @@ export function parseKnowsDsl(text: string): {
   triples: Array<[string, string, string]>
   warnings: string[]
 } {
-  const triples: Array<[string, string, string]> = []
+  const knowses = new Map<string, Array<string, number>>
+  const people = new Map<string, number>()
   const warnings: string[] = []
-  const people = new Set<string>()
 
+  let lineNo = -1
   for (const rawLine of text.split('\n')) {
+    ++lineNo
     const line = rawLine.trim()
     if (!line || line.startsWith('#')) continue
 
@@ -54,57 +56,51 @@ export function parseKnowsDsl(text: string): {
     const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
     const subj = cap(m[1]), obj = cap(m[2])
 
-    people.add(subj)
-    people.add(obj)
-    triples.push([`${BASE}${subj}`, `${NS_FOAF}knows`, `${BASE}${obj}`])
+    if (!people.has(subj)) people.set(subj, lineNo)
+    if (!people.has(obj)) people.set(obj, lineNo)
+    if (knowses.has(subj)) {
+      knowses.get(subj).push([obj, lineNo])
+    } else {
+      knowses.set(subj, [[obj, lineNo]])
+    }
   }
-
-  // Emit a foaf:Person + foaf:name triple for every person mentioned
-  for (const name of people) {
-    const iri = `${BASE}${name}`
-    triples.push([iri, `${NS_RDF}type`,    `${NS_FOAF}Person`])
-    triples.push([iri, `${NS_FOAF}name`,   `"${name}"^^${XSD_STR}`])
-  }
-
-  return { triples, warnings }
+  return {knowses, people, warnings}
 }
 
 /** Serialise triples to Turtle text */
-export function triplesToTurtle(triples: Array<[string, string, string]>, baseIri = BASE): string {
+export function triplesToTurtle(
+  people: Map<string, number>,
+  knowses: Map<string, Array<string, number>>,
+  baseIri = BASE
+): string {
   const lines = [
-    `@prefix foaf: <${NS_FOAF}> .`,
-    `@prefix xsd:  <${NS_XSD}> .`,
-    `@prefix rdf:  <${NS_RDF}> .`,
+    `PREFIX foaf: <${NS_FOAF}>`,
+    `PREFIX xsd:  <${NS_XSD}>`,
+    `PREFIX rdf:  <${NS_RDF}>`,
     '',
-    `@base <${baseIri}> .`,
+    `BASE <${baseIri}>`,
     '',
   ]
 
-  // Group by subject
-  const bySubj = new Map<string, Array<[string, string]>>()
-  for (const [s, p, o] of triples) {
-    if (!bySubj.has(s)) bySubj.set(s, [])
-    bySubj.get(s)!.push([p, o])
-  }
-
-  for (const [subj, pairs] of bySubj) {
-    const shorten = (iri: string) =>
-      iri === `${NS_RDF}type`      ? 'a' :
-      iri.startsWith(BASE)         ? `<#${iri.slice(BASE.length)}>` :
-      iri.startsWith(NS_FOAF)      ? `foaf:${iri.slice(NS_FOAF.length)}` :
-      iri.startsWith('"')          ? iri :
-      `<${iri}>`
+  let tripleCount = 0
+  for (const [subj, mentioned] of people) {
+    const shorten = (iri: string) => `<#${iri}>`
+    const add = (text: string) => { lines.push(text) ; ++tripleCount }
 
     const s = shorten(subj)
-    const preds = pairs.map(([p, o], i) =>
-      `  ${shorten(p)} ${shorten(o)}${i === pairs.length - 1 ? ' .' : ' ;'}`
-    )
-    lines.push(s)
-    lines.push(...preds)
+    add(`${s} a foaf:Person ; # L${mentioned}`)
+    const known: Array<string, number> = knowses.get(subj) || []
+    add(`  foaf:name "${subj}" ${known.length ? ";" : "."} # L${mentioned}`)
+    let knownNo = -1
+    for (const [obj, asserted] of known) {
+      ++knownNo
+      add(`  foaf:knows "${shorten(obj)}" ${knownNo < knowses.get(subj).length - 1 ? ";" : "."} # L${asserted}`)
+    }
     lines.push('')
   }
 
-  return lines.join('\n')
+  const turtle = lines.join('\n')
+  return { turtle, tripleCount }
 }
 
 class KnowsLoader implements GraphSource {
@@ -132,6 +128,7 @@ class KnowsLoader implements GraphSource {
     this.onChanged = applyGraph
     buildBasePanel(container, this, async (file) => {
       const result = await this.parse(await file.arrayBuffer())
+      if (result.warnings) console.warn("asdf", result.warnings)
       applyGraph({ text: result.turtle, filename: result.timestamp })
     })
   }
@@ -139,16 +136,16 @@ class KnowsLoader implements GraphSource {
   setBaseIri(baseIri: string): void {
     this.baseIri = baseIri
     if (this.lastText) {
-      const { triples, warnings: _ } = parseKnowsDsl(this.lastText)
-      this.onChanged({ text: triplesToTurtle(triples, this.baseIri) })
+      const { people, knowses, warnings: _ } = parseKnowsDsl(this.lastText)
+      this.onChanged({ text: triplesToTurtle(people, knowses, this.baseIri).turtle })
     }
   }
 
   async parse(buffer: ArrayBuffer): Promise<ParseResult> {
     const text = new TextDecoder().decode(buffer)
     this.lastText = text
-    const { triples, warnings } = parseKnowsDsl(text)
-    const turtle = triplesToTurtle(triples, this.baseIri)
+    const { people, knowses, warnings } = parseKnowsDsl(text)
+    const { turtle, tripleCount } = triplesToTurtle(people, knowses, this.baseIri)
 
     let hash = 0
     for (let i = 0; i < Math.min(text.length, 4096); i++)
@@ -158,7 +155,7 @@ class KnowsLoader implements GraphSource {
       turtle,
       warnings,
       sheetsSeen:  ['knows DSL'],
-      tripleCount: triples.length,
+      tripleCount,
       timestamp:   new Date().toISOString(),
       fileHash:    hash.toString(16).padStart(8, '0'),
     }

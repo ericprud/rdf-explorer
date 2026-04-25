@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/build-loaders.mjs --watch & vite",
-    "build:loaders": "node scripts/build-loaders.mjs",
-    "build": "node scripts/build-loaders.mjs && vite build",
+    "dev": "node ../../../scripts/build-modules.mjs --watch & vite",
+    "build:modules": "node ../../../scripts/build-modules.mjs",
+    "build": "node ../../../scripts/build-modules.mjs && vite build",
     "type-check": "tsc --noEmit --skipLibCheck",
     "preview": "vite preview",
     "test": "vitest run",

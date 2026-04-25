@@ -340,8 +340,13 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
   if (ext === '.js' || ext === '.mjs' || ext === '.ts') {
     const url = URL.createObjectURL(new Blob([await file.text()], { type: 'application/javascript' }))
     try {
-      const loader = await loadLoaderFromBlob(url)
-      toast(`Loader registered: ${loader.name}`, 'success')
+      const { loader, replaced } = await loadLoaderFromBlob(url)
+      toast(
+        replaced
+          ? `Parser updated: ${loader.name} — drop your data file again to re-parse`
+          : `Loader registered: ${loader.name}`,
+        'success',
+      )
     } catch (err) {
       toastError('Loader load failed', err)
     } finally {

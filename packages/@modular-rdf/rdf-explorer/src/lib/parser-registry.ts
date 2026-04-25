@@ -34,20 +34,21 @@ export function getLoaders(): GraphSource[] {
 /**
  * Register a loader.  If a loader with the same name already exists it is
  * replaced in-place (so re-uploading an updated parser works as expected).
+ * Returns true if an existing loader was replaced, false if it was newly added.
  */
-export function registerLoader(loader: GraphSource): void {
+export function registerLoader(loader: GraphSource): boolean {
   const idx = _loaders.findIndex(l => l.name === loader.name)
-  if (idx >= 0) _loaders[idx] = loader
-  else          _loaders.push(loader)
-  notify()
+  if (idx >= 0) { _loaders[idx] = loader; notify(); return true }
+  _loaders.push(loader); notify(); return false
 }
 
 /**
  * Load a GraphSource from a Blob URL that resolves to an ES module.
  * The module must export `parser` (named) or `default`.
- * Validates the export, registers the loader, and returns it.
+ * Validates the export, registers the loader, and returns it along with
+ * a flag indicating whether an existing loader of the same name was replaced.
  */
-export async function loadLoaderFromBlob(blobUrl: string): Promise<GraphSource> {
+export async function loadLoaderFromBlob(blobUrl: string): Promise<{ loader: GraphSource; replaced: boolean }> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mod: Record<string, any> = await import(/* @vite-ignore */ blobUrl)
   const candidate: GraphSource = mod['parser'] ?? mod['default']
@@ -65,8 +66,8 @@ export async function loadLoaderFromBlob(blobUrl: string): Promise<GraphSource> 
     throw new Error('GraphSource must declare at least one file extension in `accepts`.')
   }
 
-  registerLoader(candidate)
-  return candidate
+  const replaced = registerLoader(candidate)
+  return { loader: candidate, replaced }
 }
 
 /**

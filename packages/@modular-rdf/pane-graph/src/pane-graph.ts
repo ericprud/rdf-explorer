@@ -15,15 +15,9 @@ import { labelIri } from '@modular-rdf/util-rdf'
 import * as N3 from 'n3'
 import { GraphView, TYPE_COLORS, TYPE_RADII, HULL_FILLS } from './graph-view'
 import { buildGraphData, shortIri, type GraphNode, type GraphData } from './graph-data'
-import { assignTypeColors } from './color-scheme'
-import { buildRenderConfigJsonLd, parseRenderConfigJsonLd, normalisePrefixes } from './render-config-jsonld'
+import { buildRenderConfigJsonLd, normalisePrefixes } from './render-config-jsonld'
 
-export { TYPE_COLORS, TYPE_RADII, HULL_FILLS }
-export { assignTypeColors }
-export { buildRenderConfigJsonLd, parseRenderConfigJsonLd, normalisePrefixes }
 export type { GraphNode, GraphData }
-export { pushHistory, readHistory } from './view-state'
-export type { ViewState } from './view-state'
 
 function esc(s: string): string {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
@@ -114,6 +108,10 @@ class GraphPaneHandler implements GraphHandler {
     this.wireNodeDetail(pane)
 
     this.legendDlBtn.addEventListener('click', () => this.downloadRenderConfig())
+
+    window.addEventListener('popstate', () => {
+      if (this.graphData) this.graphView?.load(this.graphData)
+    })
   }
 
   private labelNode(iri: string): string {
@@ -287,6 +285,12 @@ class GraphPaneHandler implements GraphHandler {
 
   update(state: HandlerState): void {
     this.state = state
+    if (state.renderingPreferences) {
+      const rp = state.renderingPreferences
+      if (rp.typeColors) Object.assign(TYPE_COLORS, rp.typeColors)
+      if (rp.typeRadii)  Object.assign(TYPE_RADII,  rp.typeRadii)
+      if (rp.hullFills)  Object.assign(HULL_FILLS,  rp.hullFills)
+    }
     if (!state.store) return
 
     const store = state.store as N3.Store

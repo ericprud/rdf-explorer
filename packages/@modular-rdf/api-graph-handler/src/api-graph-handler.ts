@@ -25,9 +25,10 @@
  * GraphSources use, so any handler can push new RDF into the pipeline.
  */
 
-import type { ApplyGraphInput, DatasetCore } from '@modular-rdf/api-graph-source'
+import type { ApplyGraphInput, DatasetCore, RenderingPreferences } from '@modular-rdf/api-graph-source'
 export type { ApplyGraphInput, ApplyGraphCallback, ApplyGraphText, ApplyGraphStore,
-              Term, Quad, DatasetCore, ResolverContext } from '@modular-rdf/api-graph-source'
+              Term, Quad, DatasetCore, ResolverContext,
+              RenderingPreferences } from '@modular-rdf/api-graph-source'
 
 // ── Shared state snapshot ────────────────────────────────────────────────────
 
@@ -46,6 +47,8 @@ export interface HandlerState {
   baseIri:    string
   /** Current label display mode ('segment' | 'local' | 'full' | 'rdfs'). */
   labelMode:  string
+  /** Merged rendering preferences from all registered sources (and dropped JSON-LD configs). */
+  renderingPreferences?: RenderingPreferences
 }
 
 // ── Host callbacks available to handlers ────────────────────────────────────

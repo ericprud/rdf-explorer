@@ -34,20 +34,7 @@
 const REX_NS  = 'https://github.com/ericprud/rdf-explorer/ns#'
 const XSD_NS  = 'http://www.w3.org/2001/XMLSchema#'
 
-/** Produce { prefixLabel → nsUri } from the mixed-format main.ts prefixes map. */
-export function normalisePrefixes(mixed: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const [k, v] of Object.entries(mixed)) {
-    if (k.startsWith('http')) {
-      // WELL_KNOWN style: k = nsUri, v = prefixLabel → invert
-      out[v] = k
-    } else {
-      // N3 style: k = prefixLabel, v = nsUri → keep as-is
-      out[k] = v
-    }
-  }
-  return out
-}
+export { normalisePrefixes } from '@modular-rdf/util-rdf'
 
 /** Compact an IRI to prefix:local using a { prefixLabel → nsUri } map. */
 function compactIri(iri: string, pfxMap: Record<string, string>): string {

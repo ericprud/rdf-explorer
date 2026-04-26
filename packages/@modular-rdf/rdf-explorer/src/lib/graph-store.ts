@@ -180,8 +180,3 @@ export async function parseTurtleToGraph(
   }
 }
 
-// ── URL-hash view-state ─────────────────────────────────────────────────────
-// Canonical implementations live in @modular-rdf/util-rdf; re-exported here
-// so callers (main.ts) continue to import from a single graph-store import.
-export type { ViewState } from '@modular-rdf/pane-graph'
-export { pushHistory, readHistory } from '@modular-rdf/pane-graph'

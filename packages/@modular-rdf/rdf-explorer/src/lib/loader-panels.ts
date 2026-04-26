@@ -7,8 +7,6 @@
  */
 
 import type { GraphSource, ApplyGraphCallback } from '@modular-rdf/api-graph-source'
-import { TYPE_COLORS, TYPE_RADII, HULL_FILLS }    from '@modular-rdf/pane-graph'
-import { resolveTypeKeys }                         from '@modular-rdf/util-rdf'
 
 export type { ApplyGraphCallback }
 
@@ -46,10 +44,5 @@ export function buildLoaderPanels(
     // Delegate all DOM construction (drop-zone, controls) to the loader itself
     loader.buildPanel(wrapper, applyGraph)
     loader.setBaseIri?.(baseIri)
-    const pfx  = loader.prefixes ?? {}
-    const rp   = loader.renderingPreferences
-    if (rp?.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(rp.typeColors, pfx))
-    if (rp?.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(rp.typeRadii,  pfx))
-    if (rp?.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(rp.hullFills,  pfx))
   }
 }

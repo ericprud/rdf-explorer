@@ -3,61 +3,56 @@
  *
  * Design principles for loaders:
  *  • Each GraphSource owns its own panel DOM (via buildPanel).
- *  • Loaders call onTurtleChanged(turtle) whenever their output changes.
+ *  • Loaders call applyGraph() whenever their output changes.
  *  • main.ts knows nothing about vocab toggles or parser-internal state.
  *
- * load-title accepts:
- *  • .js / .mjs  — register as a new loader
+ * Load area accepts:
+ *  • .js / .mjs  — auto-detected as GraphHandler (new tab), GraphSource (sidebar
+ *                  panel), or both; multiple exports from the same module work.
  *  • .ttl / .n3  — load Turtle directly (replace, or augment if Ctrl held)
+ *  • .jsonld      — apply render config (type colours, radii, hull fills)
  *
  * Ctrl+PgUp/Dn works in all panes including CodeMirror (turtle/shex).
  *
  * Runtime configuration
  *  • On startup the app fetches the URL in ?configURL= (default: ./config.json).
- *  • The config lists graphHandler entries (which tabs to show) and graphSources
- *    entries (loaders to register automatically, e.g. from ./loaders/*.js).
- *  • Built-in handlers are statically bundled; a config entry with a "url" field
- *    dynamically imports that module instead (useful for custom deployments).
+ *  • The config `modules` array (or legacy `graphHandlers`/`graphSources`)
+ *    lists modules to load — each URL is auto-detected for its role(s).
  */
 import './styles/main.css'
-import { readHistory }                                        from './lib/graph-store'
-import { parseRenderConfigJsonLd,
-         normalisePrefixes,
-         TYPE_COLORS, TYPE_RADII, HULL_FILLS }               from '@modular-rdf/pane-graph'
-import { getLoaders, loadLoaderFromBlob, onLoadersChange }   from './lib/parser-registry'
+import { normalisePrefixes, parseRenderConfigJsonLd,
+         resolveTypeKeys,
+         LABEL_MODES, LABEL_MODE_NAMES,
+         SEGMENT_SEP, type LabelMode,
+         parseIntoStore }                                    from '@modular-rdf/util-rdf'
+import { getLoaders, registerLoader, onLoadersChange }       from './lib/parser-registry'
 import { buildLoaderPanels }                                 from './lib/loader-panels'
-import { resolveTypeKeys }                                   from '@modular-rdf/util-rdf'
-import { getHandlers, loadHandlerFromBlob,
-         registerHandler }                                   from './lib/handler-registry'
-import { buildHandlerDropZone,
+import { getHandlers, registerHandler, appendHandler }       from './lib/handler-registry'
+import { mountExternalHandler,
          updateExternalHandlers,
          getHandlerByPaneId,
          type GraphSnapshot }                               from './lib/handler-panels'
-import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/api-graph-source'
+import { loadModuleFromUrl }                                 from './lib/module-loader'
+import type { GraphSource, ApplyGraphInput,
+              RenderingPreferences }                         from '@modular-rdf/api-graph-source'
 import type { HandlerCallbacks, GraphHandler }               from '@modular-rdf/api-graph-handler'
 import * as N3                                               from 'n3'
-import { LABEL_MODES, LABEL_MODE_NAMES,
-         SEGMENT_SEP, type LabelMode,
-         parseIntoStore }                                    from '@modular-rdf/util-rdf'
 
 // ── Preference constants ────────────────────────────────────────────────────
-const PREF_RERUN_ON_BASE_CHANGE  = true
+const PREF_RERUN_ON_BASE_CHANGE   = true
 const PREF_RELABEL_ON_MODE_CHANGE = true
 const PREF_DEFAULT_BASE_IRI = window.location.origin + '/upload/'
 
 // ── Runtime config types ──────────────────────────────────────────────────────
-interface HandlerEntry {
+interface ModuleEntry {
   url:     string
-  label?:  string   // overrides handler.label when set
+  label?:  string
   hidden?: boolean
 }
-interface SourceEntry {
-  url:    string
-  label?: string
-}
 interface AppConfig {
-  graphHandlers: HandlerEntry[]
-  graphSources:  SourceEntry[]
+  modules?:       ModuleEntry[]
+  graphHandlers?: ModuleEntry[]
+  graphSources?:  ModuleEntry[]
 }
 
 async function loadConfig(): Promise<AppConfig> {
@@ -76,7 +71,7 @@ async function loadConfig(): Promise<AppConfig> {
   } catch (e) {
     console.error('[config] Failed to load config:', e)
     toast(`Config load failed: ${e instanceof Error ? e.message : e}`, 'error')
-    return { graphHandlers: [], graphSources: [] }
+    return { modules: [] }
   }
 }
 
@@ -101,9 +96,9 @@ document.querySelector('#app')!.innerHTML = `
     <div id="sidebar-top">
       <div class="sidebar-section">
         <div class="sidebar-section-title load-title" id="load-title"
-             title="Drop a .js loader or .ttl Turtle file here. Ctrl+drop augments.">
+             title="Drop a .js module, .ttl Turtle, or .jsonld config here. Ctrl+drop augments Turtle.">
           Load
-          <span class="load-title-hint">&#x2295; .js loader or .ttl Turtle</span>
+          <span class="load-title-hint">&#x2295; .js &middot; .ttl &middot; .jsonld</span>
         </div>
         <div id="loader-panels"></div>
       </div>
@@ -114,7 +109,6 @@ document.querySelector('#app')!.innerHTML = `
   <div class="main">
     <div class="tabs" id="tabs">
       <div class="tab-spacer"></div>
-      <div id="handler-drop-zone-placeholder"></div>
     </div>
     <div class="tab-content"></div>
   </div>
@@ -156,14 +150,46 @@ let labelMode: LabelMode = 'segment'
 let rdfsLabels = new Map<string, string>()
 let baseIri    = PREF_DEFAULT_BASE_IRI
 
+// ── Rendering preferences — merged from all sources and JSON-LD drops ─────────
+let mergedRenderingPrefs: RenderingPreferences = {}
+const extraRenderingPrefs: { typeColors?: Record<string, string>; typeRadii?: Record<string, number>; hullFills?: Record<string, string> } = {}
+
+function computeRenderingPrefs(): void {
+  const turtlePfx = normalisePrefixes(prefixes)
+  const typeColors: Record<string, string> = { ...(extraRenderingPrefs.typeColors ?? {}) }
+  const typeRadii:  Record<string, number>  = { ...(extraRenderingPrefs.typeRadii  ?? {}) }
+  const hullFills:  Record<string, string>  = { ...(extraRenderingPrefs.hullFills  ?? {}) }
+  for (const loader of getLoaders()) {
+    const combined = { ...turtlePfx, ...(loader.prefixes ?? {}) }
+    const rp = loader.renderingPreferences
+    if (rp?.typeColors) Object.assign(typeColors, resolveTypeKeys(rp.typeColors, combined))
+    if (rp?.typeRadii)  Object.assign(typeRadii,  resolveTypeKeys(rp.typeRadii,  combined))
+    if (rp?.hullFills)  Object.assign(hullFills,  resolveTypeKeys(rp.hullFills,  combined))
+  }
+  mergedRenderingPrefs = { typeColors, typeRadii, hullFills }
+}
+
 // ── Tab keyboard map — filled by init() ──────────────────────────────────────
 let tabMap: Record<string, string> = {}
 
 // ── Active tab name — set by init(), updated by switchTab() ──────────────────
 let activeHandlerName = 'graph'
 
-// ── Sidebar bottom section ────────────────────────────────────────────────────
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const tabsEl    = document.getElementById('tabs')!
+const contentEl = document.querySelector<HTMLElement>('.tab-content')!
 const sidebarPaneSection = document.getElementById('sidebar-pane-section')!
+
+// ── Snapshot helper ───────────────────────────────────────────────────────────
+function getSnapshot(): GraphSnapshot | null {
+  if (!n3Store) return null
+  return {
+    state: { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode, renderingPreferences: mergedRenderingPrefs },
+    text:  currentTurtle
+      ? { text: currentTurtle, format: 'turtle', filename: currentFilename || undefined }
+      : undefined,
+  }
+}
 
 // ── Handler callbacks ─────────────────────────────────────────────────────────
 const handlerCallbacks: HandlerCallbacks = {
@@ -182,60 +208,45 @@ const handlerCallbacks: HandlerCallbacks = {
   },
 }
 
-// ── Drop-zone for externally dropped handler .js files ───────────────────────
-{
-  const tabsEl      = document.getElementById('tabs')!
-  const contentEl   = document.querySelector<HTMLElement>('.tab-content')!
-  const placeholder = document.getElementById('handler-drop-zone-placeholder')!
-
-  const dropZone = buildHandlerDropZone(
-    tabsEl, contentEl,
-    handlerCallbacks,
-    toast,
-    switchTab,
-    (): GraphSnapshot | null => n3Store
-      ? {
-          state: { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
-          text:  currentTurtle
-            ? { text: currentTurtle, format: 'turtle', filename: currentFilename || undefined }
-            : undefined,
-        }
-      : null,
-  )
-  placeholder.replaceWith(dropZone)
-}
-
 // ── Async initialisation — reads config, builds tabs, mounts handlers ─────────
 async function init(): Promise<void> {
-  const config  = await loadConfig()
-  const tabsEl  = document.getElementById('tabs')!
-  const contentEl = document.querySelector<HTMLElement>('.tab-content')!
+  const config    = await loadConfig()
   const tabSpacer = tabsEl.querySelector<HTMLElement>('.tab-spacer')!
 
-  // Load each handler from its URL, build its tab+pane, and mount it.
-  const loaded: Array<{ handler: GraphHandler; label: string; hidden?: boolean }> = []
-  for (const entry of config.graphHandlers ?? []) {
+  // Merge all module entries (unified `modules` key + legacy keys for compat)
+  const allEntries: ModuleEntry[] = [
+    ...(config.modules ?? []),
+    ...(config.graphHandlers ?? []),
+    ...(config.graphSources ?? []),
+  ]
+
+  const handlerEntries: Array<{ handler: GraphHandler; label: string; hidden?: boolean }> = []
+
+  for (const entry of allEntries) {
     try {
-      const url     = new URL(entry.url, window.location.href).href
-      const handler = await loadHandlerFromBlob(url)
-      registerHandler(handler)
-      loaded.push({
-        handler,
-        label:  entry.label ?? handler.label ?? handler.name,
-        hidden: entry.hidden,
-      })
+      const url    = new URL(entry.url, window.location.href).href
+      const loaded = await loadModuleFromUrl(url)
+      if (loaded.handler) {
+        const h = loaded.handler
+        if (entry.label) h.label = entry.label
+        registerHandler(h)
+        handlerEntries.push({ handler: h, label: entry.label ?? h.label ?? h.name, hidden: entry.hidden })
+      }
+      if (loaded.source) {
+        registerLoader(loaded.source)
+      }
     } catch (e) {
-      toast(`Failed to load handler from ${entry.url}: ${e instanceof Error ? e.message : e}`, 'error')
+      toast(`Failed to load module from ${entry.url}: ${e instanceof Error ? e.message : e}`, 'error')
     }
   }
 
-  const firstVisible = loaded.find(x => !x.hidden)
+  const firstVisible = handlerEntries.find(x => !x.hidden)
   activeHandlerName  = firstVisible?.handler.name ?? ''
   tabMap = Object.fromEntries(
-    loaded.filter(x => !x.hidden).map((x, i) => [String(i + 1), x.handler.name])
+    handlerEntries.filter(x => !x.hidden).map((x, i) => [String(i + 1), x.handler.name])
   )
 
-  for (const { handler, label, hidden } of loaded) {
+  for (const { handler, label, hidden } of handlerEntries) {
     const isFirst = handler.name === firstVisible?.handler.name
 
     const tab = document.createElement('div')
@@ -255,17 +266,6 @@ async function init(): Promise<void> {
 
   // Activate the first visible pane's sidebar section
   firstVisible?.handler.onActivate?.(sidebarPaneSection)
-
-  // Auto-load graph sources listed in the config
-  for (const source of config.graphSources ?? []) {
-    try {
-      const url = new URL(source.url, window.location.href).href
-      await loadLoaderFromBlob(url)
-    } catch (e) {
-      console.warn(`[config] Failed to load source '${source.url}':`, e)
-    }
-  }
-
 }
 
 init().catch(e => console.error('[init]', e))
@@ -275,6 +275,14 @@ const loaderPanelContainer = document.getElementById('loader-panels')!
 
 function rebuildLoaderPanels(loaders: GraphSource[]): void {
   buildLoaderPanels(loaders, loaderPanelContainer, handleApplyGraph, baseIri)
+  // Re-merge rendering prefs and push updated state to all handlers
+  computeRenderingPrefs()
+  if (n3Store) {
+    updateExternalHandlers(
+      getHandlers(),
+      { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode, renderingPreferences: mergedRenderingPrefs },
+    )
+  }
 }
 
 onLoadersChange(rebuildLoaderPanels)
@@ -305,7 +313,7 @@ function handleApplyGraph(input: ApplyGraphInput | string): void {
   }
 }
 
-// ── load-title: drop target for .js loaders and .ttl Turtle ──────────────────
+// ── load-title: drop target for .js modules, .ttl Turtle, .jsonld config ──────
 const loadTitle     = document.getElementById('load-title')!
 const loadTitleInput = (() => {
   const fi = document.createElement('input')
@@ -337,15 +345,22 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
   if (ext === '.js' || ext === '.mjs' || ext === '.ts') {
     const url = URL.createObjectURL(new Blob([await file.text()], { type: 'application/javascript' }))
     try {
-      const { loader, replaced } = await loadLoaderFromBlob(url)
-      toast(
-        replaced
-          ? `Parser updated: ${loader.name} — drop your data file again to re-parse`
-          : `Loader registered: ${loader.name}`,
-        'success',
-      )
+      const loaded = await loadModuleFromUrl(url)
+      if (loaded.source) {
+        const replaced = registerLoader(loaded.source)
+        toast(replaced
+          ? `Source updated: ${loaded.source.name} — drop your data file again to re-parse`
+          : `Source loaded: ${loaded.source.name}`,
+          'success',
+        )
+      }
+      if (loaded.handler) {
+        appendHandler(loaded.handler)
+        mountExternalHandler(loaded.handler, tabsEl, contentEl, handlerCallbacks, switchTab, getSnapshot())
+        toast(`Handler loaded: ${loaded.handler.label ?? loaded.handler.name}`, 'success')
+      }
     } catch (err) {
-      toastError('Loader load failed', err)
+      toastError('Module load failed', err)
     } finally {
       URL.revokeObjectURL(url)
     }
@@ -357,15 +372,22 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
       const cfg = parseRenderConfigJsonLd(JSON.parse(await file.text()))
       if (!cfg) { toast('Not a valid render config JSON-LD', 'error'); return }
       const turtlePfx = normalisePrefixes(prefixes)
-      Object.assign(TYPE_COLORS, resolveTypeKeys(cfg.typeColors, turtlePfx))
-      Object.assign(TYPE_RADII,  resolveTypeKeys(cfg.typeRadii,  turtlePfx))
-      Object.assign(HULL_FILLS,  resolveTypeKeys(cfg.hullFills,  turtlePfx))
+      extraRenderingPrefs.typeColors = resolveTypeKeys(cfg.typeColors, turtlePfx)
+      extraRenderingPrefs.typeRadii  = resolveTypeKeys(cfg.typeRadii,  turtlePfx)
+      extraRenderingPrefs.hullFills  = resolveTypeKeys(cfg.hullFills,  turtlePfx)
+      computeRenderingPrefs()
+      if (n3Store) {
+        updateExternalHandlers(
+          getHandlers(),
+          { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode, renderingPreferences: mergedRenderingPrefs },
+        )
+      }
       toast('Render config applied', 'success')
     } catch (err) { toastError('Failed to parse JSON-LD', err) }
     return
   }
 
-  if (ext === '.ttl' || ext === '.n3' || ext === '.turtle') {
+  if (ext === '.ttl' || ext === '.n3' || ext === '.turtle' || ext === '.trig' || ext === '.nt') {
     const turtle = await file.text()
     if (augment && currentTurtle) {
       const newBody = turtle.replace(/(@prefix[^\n]+\n)+/g, '')
@@ -379,7 +401,7 @@ async function handleLoadTitleFile(file: File, augment: boolean): Promise<void> 
     return
   }
 
-  toast(`Unsupported file: ${file.name}. Drop .js loaders or .ttl Turtle here.`, 'info')
+  toast(`Unsupported file: ${file.name}. Drop .js modules, .ttl Turtle, or .jsonld here.`, 'info')
 }
 
 // ── Core Turtle → graph pipeline ─────────────────────────────────────────────
@@ -391,22 +413,14 @@ async function applyTurtle(turtle: string, filename?: string): Promise<void> {
 
     n3Store  = store as N3.Store
     prefixes = parsedPrefixes
-    // Re-expand loader rendering prefs now we have the Turtle's full prefix map.
-    const turtlePfx = normalisePrefixes(prefixes)
-    for (const loader of getLoaders()) {
-      const combined = { ...turtlePfx, ...(loader.prefixes ?? {}) }
-      const rp       = loader.renderingPreferences
-      if (rp?.typeColors) Object.assign(TYPE_COLORS, resolveTypeKeys(rp.typeColors, combined))
-      if (rp?.typeRadii)  Object.assign(TYPE_RADII,  resolveTypeKeys(rp.typeRadii,  combined))
-      if (rp?.hullFills)  Object.assign(HULL_FILLS,  resolveTypeKeys(rp.hullFills,  combined))
-    }
     refreshRdfsLabels()
+    computeRenderingPrefs()
 
     document.getElementById('btn-download')!.style.display = ''
 
     updateExternalHandlers(
       getHandlers(),
-      { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
+      { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode, renderingPreferences: mergedRenderingPrefs },
       { text: turtle, format: 'turtle', filename: currentFilename },
     )
   } catch (e) {
@@ -532,11 +546,10 @@ document.getElementById('btn-download')!.addEventListener('click', () => {
     update()
     toast(`Label mode: ${LABEL_MODE_NAMES[labelMode]}`, 'info')
     if (!PREF_RELABEL_ON_MODE_CHANGE) return
-    // Re-push updated state so handlers can re-render labels
     if (n3Store) {
       updateExternalHandlers(
         getHandlers(),
-        { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
+        { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode, renderingPreferences: mergedRenderingPrefs },
       )
     }
   })
@@ -596,7 +609,3 @@ function toastError(label: string, err: unknown): void {
 document.getElementById('kbd-close')!.addEventListener('click', () => document.getElementById('kbd-overlay')!.classList.remove('visible'))
 document.getElementById('kbd-overlay')!.addEventListener('click', e => { if (e.target === e.currentTarget) document.getElementById('kbd-overlay')!.classList.remove('visible') })
 document.getElementById('btn-shortcuts')!.addEventListener('click', () => document.getElementById('kbd-overlay')!.classList.add('visible'))
-
-window.addEventListener('popstate', () => {
-  readHistory()
-})

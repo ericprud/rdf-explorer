@@ -6,6 +6,7 @@
   "main": "./src/pane-turtle.ts",
   "dependencies": {
     "@modular-rdf/api-graph-handler": "*",
+    "@modular-rdf/api-graph-source":  "*",
     "@codemirror/autocomplete": "^6.18.0",
     "@codemirror/commands": "^6.7.0",
     "@codemirror/language": "^6.10.0",

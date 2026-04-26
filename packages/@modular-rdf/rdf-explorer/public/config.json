@@ -1,13 +1,11 @@
 {
-  "graphHandlers": [
+  "modules": [
     { "url": "./panes/pane-graph.js",     "label": "Graph" },
     { "url": "./panes/pane-turtle.js",    "label": "Turtle" },
     { "url": "./panes/pane-sparql.js",    "label": "SPARQL" },
     { "url": "./panes/pane-shex.js",      "label": "ShEx" },
     { "url": "./panes/pane-inference.js", "label": "Type Inference" },
-    { "url": "./panes/pane-diff.js",      "label": "Diff" }
-  ],
-  "graphSources": [
+    { "url": "./panes/pane-diff.js",      "label": "Diff" },
     { "url": "./loaders/knows-parser.js" }
   ]
 }

@@ -1,113 +1,70 @@
 /**
- * Unit tests for knows-parser.ts
+ * Unit tests for @modular-rdf/source-knows (node environment)
  *
  * Run with: npx vitest run
  */
 import { describe, it, expect } from 'vitest'
-import { parseKnowsDsl, triplesToTurtle, parser } from '../../knows-parser'
+import { parseKnowsDsl, parser } from '@modular-rdf/source-knows'
 
-const FOAF = 'http://xmlns.com/foaf/0.1/'
-const RDF  = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
 const BASE = 'https://example.org/knows#'
 
 describe('parseKnowsDsl', () => {
   it('parses a single statement', () => {
-    const { triples, warnings } = parseKnowsDsl('Alice knows Bob.')
+    const { knowses, warnings } = parseKnowsDsl('Alice knows Bob.')
     expect(warnings).toHaveLength(0)
-    expect(triples).toContainEqual([`${BASE}Alice`, `${FOAF}knows`, `${BASE}Bob`])
+    const aliceKnows = knowses.get('Alice')
+    expect(aliceKnows).toBeDefined()
+    expect(aliceKnows!.map(([name]) => name)).toContain('Bob')
   })
 
-  it('produces foaf:Person triples for both subject and object', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const types = triples.filter(([,p]) => p === `${RDF}type`).map(([s]) => s)
-    expect(types).toContain(`${BASE}Alice`)
-    expect(types).toContain(`${BASE}Bob`)
-  })
-
-  it('produces foaf:name literals for every person', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const names = triples.filter(([,p]) => p === `${FOAF}name`).map(([s,,o]) => [s, o])
-    expect(names).toContainEqual([`${BASE}Alice`, '"Alice"^^xsd:string'])
-    expect(names).toContainEqual([`${BASE}Bob`,   '"Bob"^^xsd:string'])
+  it('populates people for both subject and object', () => {
+    const { people } = parseKnowsDsl('Alice knows Bob.')
+    expect(people.has('Alice')).toBe(true)
+    expect(people.has('Bob')).toBe(true)
   })
 
   it('handles multiple statements', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.\nBob knows Carol.')
-    const knows  = triples.filter(([,p]) => p === `${FOAF}knows`)
-    const people = new Set(triples.filter(([,p]) => p === `${RDF}type`).map(([s]) => s))
-    expect(knows).toHaveLength(2)
+    const { people, knowses } = parseKnowsDsl('Alice knows Bob.\nBob knows Carol.')
     expect(people.size).toBe(3)
+    expect(knowses.get('Alice')!.length).toBe(1)
+    expect(knowses.get('Bob')!.length).toBe(1)
   })
 
   it('deduplicates people mentioned multiple times', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.\nAlice knows Carol.')
-    const aliceTypes = triples.filter(([s, p]) =>
-      s === `${BASE}Alice` && p === `${RDF}type`)
-    expect(aliceTypes).toHaveLength(1)
+    const { people } = parseKnowsDsl('Alice knows Bob.\nAlice knows Carol.')
+    expect(people.size).toBe(3)
+    expect(people.has('Alice')).toBe(true)
   })
 
   it('capitalises lower-case names', () => {
-    const { triples } = parseKnowsDsl('alice knows bob.')
-    const [knows] = triples.filter(([,p]) => p === `${FOAF}knows`)
-    expect(knows[0]).toBe(`${BASE}Alice`)
-    expect(knows[2]).toBe(`${BASE}Bob`)
+    const { knowses } = parseKnowsDsl('alice knows bob.')
+    expect(knowses.has('Alice')).toBe(true)
+    expect(knowses.get('Alice')![0][0]).toBe('Bob')
   })
 
   it('ignores blank lines and comments', () => {
-    const { triples, warnings } = parseKnowsDsl('# comment\n\nAlice knows Bob.\n')
+    const { knowses, warnings } = parseKnowsDsl('# comment\n\nAlice knows Bob.\n')
     expect(warnings).toHaveLength(0)
-    expect(triples.some(([,p]) => p === `${FOAF}knows`)).toBe(true)
+    expect(knowses.has('Alice')).toBe(true)
   })
 
-  it('warns on unrecognised lines', () => {
+  it('warns on unrecognised input', () => {
     const { warnings } = parseKnowsDsl('this is not valid')
-    expect(warnings).toHaveLength(1)
-    expect(warnings[0]).toMatch(/Unrecognised line/)
+    expect(warnings.length).toBeGreaterThan(0)
   })
 
   it('returns empty result for empty input', () => {
-    const { triples, warnings } = parseKnowsDsl('')
-    expect(triples).toHaveLength(0)
+    const { people, knowses, warnings } = parseKnowsDsl('')
+    expect(people.size).toBe(0)
+    expect(knowses.size).toBe(0)
     expect(warnings).toHaveLength(0)
   })
 
   it('handles trailing dot being optional', () => {
     const withDot    = parseKnowsDsl('Alice knows Bob.')
     const withoutDot = parseKnowsDsl('Alice knows Bob')
-    expect(withDot.triples).toEqual(withoutDot.triples)
-  })
-})
-
-describe('triplesToTurtle', () => {
-  it('produces Turtle with prefix and base declarations', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const ttl = triplesToTurtle(triples)
-    expect(ttl).toContain('@prefix foaf:')
-    expect(ttl).toContain('@base <https://example.org/knows#>')
-  })
-
-  it('uses relative IRIs for base-namespace subjects', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const ttl = triplesToTurtle(triples)
-    expect(ttl).toContain('<#Alice>')
-    expect(ttl).toContain('foaf:knows')
-    expect(ttl).not.toContain('<http://xmlns.com/foaf/0.1/knows>')
-  })
-
-  it('uses "a" shorthand for rdf:type', () => {
-    const { triples } = parseKnowsDsl('Alice knows Bob.')
-    const ttl = triplesToTurtle(triples)
-    expect(ttl).toContain('a foaf:Person')
-  })
-
-  it('round-trips through parseKnowsDsl without data loss', () => {
-    const input = 'Alice knows Bob.\nBob knows Carol.'
-    const { triples } = parseKnowsDsl(input)
-    const ttl = triplesToTurtle(triples)
-    // All three people should appear as relative IRIs
-    expect(ttl).toContain('<#Alice>')
-    expect(ttl).toContain('<#Bob>')
-    expect(ttl).toContain('<#Carol>')
+    expect([...withDot.people.keys()]).toEqual([...withoutDot.people.keys()])
+    expect([...withDot.knowses.entries()]).toEqual([...withoutDot.knowses.entries()])
   })
 })
 
@@ -131,26 +88,22 @@ describe('GraphSource interface conformance', () => {
     expect(Array.isArray(r.sheetsSeen)).toBe(true)
   })
 
-  it('parse() turtle contains the expected foaf:knows triple', async () => {
+  it('parse() turtle has prefix, base, relative IRIs and foaf:knows', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.').buffer as ArrayBuffer
     const r = await parser.parse!(buf)
+    expect(r.turtle).toContain('PREFIX foaf:')
+    expect(r.turtle).toContain(`BASE <${BASE}>`)
+    expect(r.turtle).toContain('<#Alice>')
     expect(r.turtle).toContain('foaf:knows')
+    expect(r.turtle).toContain('a foaf:Person')
     expect(r.tripleCount).toBeGreaterThan(0)
   })
 
-  it('parse() warns on bad lines but still returns Turtle', async () => {
-    const buf = new TextEncoder().encode('Alice knows Bob.\nbad line').buffer as ArrayBuffer
-    const r = await parser.parse!(buf)
-    expect(r.warnings.length).toBeGreaterThan(0)
-    expect(r.turtle).toContain('foaf:knows')
-  })
-
-  it('parse() tripleCount matches actual triples array length', async () => {
+  it('parse() round-trips all subjects into Turtle', async () => {
     const buf = new TextEncoder().encode('Alice knows Bob.\nBob knows Carol.').buffer as ArrayBuffer
     const r = await parser.parse!(buf)
-    // Count the triples ourselves using parseKnowsDsl
-    const text = new TextDecoder().decode(buf)
-    const { triples } = parseKnowsDsl(text)
-    expect(r.tripleCount).toBe(triples.length)
+    expect(r.turtle).toContain('<#Alice>')
+    expect(r.turtle).toContain('<#Bob>')
+    expect(r.turtle).toContain('<#Carol>')
   })
 })

@@ -35,7 +35,8 @@
  */
 
 import esbuild from 'esbuild'
-import { mkdirSync } from 'fs'
+import { mkdirSync, watch as fsWatch } from 'fs'
+import { spawnSync } from 'child_process'
 import { fileURLToPath } from 'url'
 import { dirname, resolve } from 'path'
 
@@ -44,7 +45,7 @@ const root    = resolve(__dirname, '..')                             // repo roo
 const pkgs    = resolve(root, 'packages', '@modular-rdf')
 const pub     = resolve(pkgs, 'rdf-explorer', 'public')
 const dist    = resolve(pkgs, 'rdf-explorer', 'dist')
-const loaders = resolve(dist, 'loaders')  // knows-parser (GraphSource examples) — served from dist/
+const loaders = resolve(pub, 'loaders')   // knows-parser (GraphSource examples) — served from public/
 const panes   = resolve(pub, 'panes')     // util-rdf + all pane bundles
 const watch   = process.argv.includes('--watch')
 
@@ -66,9 +67,10 @@ const modules = [
   // ── Example GraphSource (parser) ──────────────────────────────────────────
   {
     label:      'knows-parser',
-    entryPoint: resolve(pkgs, 'rdf-explorer', 'src', 'lib', 'knows-parser.ts'),
+    entryPoint: resolve(pkgs, 'source-knows', 'src', 'source-knows.ts'),
     outfile:    resolve(loaders, 'knows-parser.js'),
     external:   HOST_EXTERNALS,
+    jisonSrc:   resolve(pkgs, 'source-knows'),  // run 'npm run parser' here when .jison changes
   },
 
   // ── GraphHandler panes ────────────────────────────────────────────────────
@@ -143,6 +145,24 @@ if (watch) {
     await ctx.watch()
     console.log(`[modules] watching ${label} → ${outfile.replace(root + '/', '')}`)
   }
+
+  // Watch .jison files; regenerate the TypeScript parser then let esbuild pick it up.
+  const jisonTimers = new Map()
+  for (const { label, jisonSrc } of modules) {
+    if (!jisonSrc) continue
+    const srcDir = resolve(jisonSrc, 'src')
+    fsWatch(srcDir, (_, filename) => {
+      if (!filename?.endsWith('.jison')) return
+      clearTimeout(jisonTimers.get(jisonSrc))
+      jisonTimers.set(jisonSrc, setTimeout(() => {
+        console.log(`[jison] ${filename} changed — regenerating ${label} parser...`)
+        const r = spawnSync('npm', ['run', 'parser'], { cwd: jisonSrc, stdio: 'inherit' })
+        if (r.status !== 0) console.error(`[jison] parser generation failed for ${label}`)
+      }, 50))
+    })
+    console.log(`[jison] watching ${label} → ${srcDir.replace(root + '/', '')}/*.jison`)
+  }
+
   console.log('[modules] watching for changes (Ctrl+C to stop)...')
 } else {
   const results = await Promise.allSettled(

@@ -27,6 +27,7 @@
     "codemirror-lang-turtle": "^0.0.2",
     "d3": "^7.9.0",
     "@modular-rdf/api-graph-source": "*",
+    "@modular-rdf/source-knows": "*",
     "@modular-rdf/api-graph-handler": "*",
     "@modular-rdf/util-rdf": "*",
     "@modular-rdf/pane-sparql": "*",

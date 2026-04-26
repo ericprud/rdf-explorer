@@ -16,7 +16,7 @@
  * ── ADDING A LOADER ──────────────────────────────────────────────────────────
  *
  * 1. Write your loader in src/lib/my-loader.ts (implement GraphSource interface).
- * 2. Add a build entry in scripts/build-loaders.mjs.
+ * 2. Add a build entry in scripts/build-modules.mjs.
  * 3. Import and add to BUNDLED_LOADERS below for dev convenience.
  *
  * ── EFFECT OF EMPTYING THIS LIST ─────────────────────────────────────────────
@@ -28,8 +28,7 @@
  */
 
 import { registerLoader } from './parser-registry'
-import { parser as knowsParser } from './knows-parser'
-// import { parser as knowsParser } from './knows-parser'   // uncomment to also pre-register
+import { parser as knowsParser } from '@modular-rdf/source-knows'
 
 /**
  * Loaders to register at startup.

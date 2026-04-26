@@ -1,0 +1,25 @@
+{
+  "name": "@modular-rdf/source-knows",
+  "version": "0.1.0",
+  "description": "GraphSource for the 'Alice knows Bob.' DSL — example loader using ts-jison",
+  "type": "module",
+  "exports": {
+    ".": "./src/source-knows.ts"
+  },
+  "types": "./src/source-knows.ts",
+  "scripts": {
+    "parser": "ts-jison -n Knows -t typescript -p lalr -o ./src/KnowsParser.ts ./src/knows.jison"
+  },
+  "dependencies": {
+    "@ts-jison/parser": "^0.4.1-alpha.1",
+    "@ts-jison/lexer": "^0.4.1-alpha.1",
+    "@modular-rdf/api-graph-source": "*"
+  },
+  "devDependencies": {
+    "@ts-jison/parser-generator": "^0.4.1-alpha.2"
+  },
+  "files": ["src"],
+  "publishConfig": {
+    "access": "public"
+  }
+}

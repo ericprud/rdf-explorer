@@ -5,7 +5,7 @@
  * failure modes, and the accepts string.
  */
 import { describe, it, expect, beforeEach } from 'vitest'
-import { parser as knowsParser } from '../knows-parser'
+import { parser as knowsParser } from '@modular-rdf/source-knows'
 import type { GraphSource } from '@modular-rdf/api-graph-source'
 
 // We import the registry functions fresh each test by reimporting via dynamic

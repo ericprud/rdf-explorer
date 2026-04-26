@@ -32,7 +32,8 @@ import { getHandlers, loadHandlerFromBlob,
 import { registerBuiltinHandlers }                           from './lib/handler-config'
 import { buildHandlerDropZone, mountExternalHandler,
          updateExternalHandlers,
-         getHandlerByPaneId }                               from './lib/handler-panels'
+         getHandlerByPaneId,
+         type GraphSnapshot }                               from './lib/handler-panels'
 import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/api-graph-source'
 import type { HandlerCallbacks }                             from '@modular-rdf/api-graph-handler'
 import * as N3                                               from 'n3'
@@ -198,6 +199,14 @@ const handlerCallbacks: HandlerCallbacks = {
     handlerCallbacks,
     toast,
     switchTab,
+    (): GraphSnapshot | null => n3Store
+      ? {
+          state: { store: n3Store, prefixes, rdfsLabels, baseIri, labelMode },
+          text:  currentTurtle
+            ? { text: currentTurtle, format: 'turtle', filename: currentFilename || undefined }
+            : undefined,
+        }
+      : null,
   )
   placeholder.replaceWith(dropZone)
 }

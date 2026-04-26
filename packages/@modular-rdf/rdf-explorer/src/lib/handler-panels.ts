@@ -16,6 +16,12 @@ import type { GraphHandler, HandlerState, HandlerCallbacks } from '@modular-rdf/
 import type { ApplyGraphCallback } from '@modular-rdf/api-graph-source'
 import { loadHandlerFromBlob, appendHandler } from './handler-registry'
 
+/** Current application graph state, for delivery to a newly mounted handler. */
+export interface GraphSnapshot {
+  state: HandlerState
+  text?: { text: string; format?: 'turtle' | 'trig'; filename?: string }
+}
+
 // ── Pane instance tracking ────────────────────────────────────────────────────
 let _paneCounter = 0
 const _paneHandlers = new Map<string, GraphHandler>()
@@ -39,13 +45,12 @@ export function getHandlerByPaneId(paneId: string): GraphHandler | undefined {
  * @param switchTab  Switch the active tab by name.
  */
 export function buildHandlerDropZone(
-  tabsEl:    HTMLElement,
-  contentEl: HTMLElement,
-  callbacks: HandlerCallbacks,
-  onToast:   (msg: string, kind?: 'info' | 'success' | 'error') => void,
-  switchTab: (name: string) => void,
-  // kept for symmetry with buildLoaderPanels; unused until handler hot-reload
-  _applyGraph?: ApplyGraphCallback,
+  tabsEl:      HTMLElement,
+  contentEl:   HTMLElement,
+  callbacks:   HandlerCallbacks,
+  onToast:     (msg: string, kind?: 'info' | 'success' | 'error') => void,
+  switchTab:   (name: string) => void,
+  getSnapshot: () => GraphSnapshot | null = () => null,
 ): HTMLElement {
   const zone = document.createElement('div')
   zone.id        = 'handler-drop-zone'
@@ -63,7 +68,7 @@ export function buildHandlerDropZone(
   zone.addEventListener('drop', async e => {
     e.preventDefault(); deactivate()
     for (const file of e.dataTransfer?.files ?? []) {
-      await loadHandlerFile(file, tabsEl, contentEl, callbacks, onToast, switchTab)
+      await loadHandlerFile(file, tabsEl, contentEl, callbacks, onToast, switchTab, getSnapshot)
     }
   })
 
@@ -78,7 +83,7 @@ export function buildHandlerDropZone(
   zone.addEventListener('click', () => fi.click())
   fi.addEventListener('change', async () => {
     for (const file of fi.files ?? []) {
-      await loadHandlerFile(file, tabsEl, contentEl, callbacks, onToast, switchTab)
+      await loadHandlerFile(file, tabsEl, contentEl, callbacks, onToast, switchTab, getSnapshot)
     }
     fi.value = ''
   })
@@ -87,12 +92,13 @@ export function buildHandlerDropZone(
 }
 
 async function loadHandlerFile(
-  file:      File,
-  tabsEl:    HTMLElement,
-  contentEl: HTMLElement,
-  callbacks: HandlerCallbacks,
-  onToast:   (msg: string, kind?: 'info' | 'success' | 'error') => void,
-  switchTab: (name: string) => void,
+  file:        File,
+  tabsEl:      HTMLElement,
+  contentEl:   HTMLElement,
+  callbacks:   HandlerCallbacks,
+  onToast:     (msg: string, kind?: 'info' | 'success' | 'error') => void,
+  switchTab:   (name: string) => void,
+  getSnapshot: () => GraphSnapshot | null,
 ): Promise<void> {
   const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase()
   if (ext !== '.js' && ext !== '.mjs') {
@@ -102,7 +108,7 @@ async function loadHandlerFile(
   try {
     const handler = await loadHandlerFromBlob(url)
     appendHandler(handler)
-    mountExternalHandler(handler, tabsEl, contentEl, callbacks, switchTab)
+    mountExternalHandler(handler, tabsEl, contentEl, callbacks, switchTab, getSnapshot())
     onToast(`Handler loaded: ${handler.label ?? handler.name}`, 'success')
   } catch (err) {
     onToast(`Handler load failed: ${err instanceof Error ? err.message : String(err)}`, 'error')
@@ -124,6 +130,7 @@ export function mountExternalHandler(
   contentEl: HTMLElement,
   callbacks: HandlerCallbacks,
   switchTab: (name: string) => void,
+  snapshot:  GraphSnapshot | null = null,
 ): void {
   const paneId = `pane${_paneCounter++}`
   const label  = handler.label ?? handler.name
@@ -145,6 +152,13 @@ export function mountExternalHandler(
   else        tabsEl.appendChild(tabEl)
 
   handler.mount(paneEl, callbacks)
+
+  if (snapshot) {
+    try { handler.update(snapshot.state) } catch (e) { console.error(`[handler:${handler.name}] update() threw on mount`, e) }
+    if (snapshot.text && handler.updateText) {
+      try { handler.updateText(snapshot.text.text, snapshot.text.format, snapshot.text.filename) } catch (e) { console.error(`[handler:${handler.name}] updateText() threw on mount`, e) }
+    }
+  }
 }
 
 // ── State broadcast ───────────────────────────────────────────────────────────

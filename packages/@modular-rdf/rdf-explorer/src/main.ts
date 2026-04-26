@@ -29,20 +29,16 @@ import { buildLoaderPanels }                                 from './lib/loader-
 import { resolveTypeKeys }                                   from '@modular-rdf/util-rdf'
 import { getHandlers, loadHandlerFromBlob,
          registerHandler }                                   from './lib/handler-registry'
-import { registerBuiltinHandlers }                           from './lib/handler-config'
-import { buildHandlerDropZone, mountExternalHandler,
+import { buildHandlerDropZone,
          updateExternalHandlers,
          getHandlerByPaneId,
          type GraphSnapshot }                               from './lib/handler-panels'
 import type { GraphSource, ApplyGraphInput }                 from '@modular-rdf/api-graph-source'
-import type { HandlerCallbacks }                             from '@modular-rdf/api-graph-handler'
+import type { HandlerCallbacks, GraphHandler }               from '@modular-rdf/api-graph-handler'
 import * as N3                                               from 'n3'
 import { LABEL_MODES, LABEL_MODE_NAMES,
          SEGMENT_SEP, type LabelMode,
          parseIntoStore }                                    from '@modular-rdf/util-rdf'
-
-// ── Register built-in pane handlers ──────────────────────────────────────────
-registerBuiltinHandlers()
 
 // ── Preference constants ────────────────────────────────────────────────────
 const PREF_RERUN_ON_BASE_CHANGE  = true
@@ -51,19 +47,17 @@ const PREF_DEFAULT_BASE_IRI = window.location.origin + '/upload/'
 
 // ── Runtime config types ──────────────────────────────────────────────────────
 interface HandlerEntry {
-  name:    string
-  label:   string
+  url:     string
+  label?:  string   // overrides handler.label when set
   hidden?: boolean
-  /** If present, dynamically import this ES module URL for the handler. */
-  url?:    string
 }
 interface SourceEntry {
   url:    string
   label?: string
 }
 interface AppConfig {
-  graphHandler: HandlerEntry[]
-  graphSources: SourceEntry[]
+  graphHandlers: HandlerEntry[]
+  graphSources:  SourceEntry[]
 }
 
 async function loadConfig(): Promise<AppConfig> {
@@ -82,7 +76,7 @@ async function loadConfig(): Promise<AppConfig> {
   } catch (e) {
     console.error('[config] Failed to load config:', e)
     toast(`Config load failed: ${e instanceof Error ? e.message : e}`, 'error')
-    return { graphHandler: [], graphSources: [] }
+    return { graphHandlers: [], graphSources: [] }
   }
 }
 
@@ -218,55 +212,49 @@ async function init(): Promise<void> {
   const contentEl = document.querySelector<HTMLElement>('.tab-content')!
   const tabSpacer = tabsEl.querySelector<HTMLElement>('.tab-spacer')!
 
-  const firstVisible = config.graphHandler.find(h => !h.hidden)
-  activeHandlerName  = firstVisible?.name ?? 'graph'
+  // Load each handler from its URL, build its tab+pane, and mount it.
+  const loaded: Array<{ handler: GraphHandler; label: string; hidden?: boolean }> = []
+  for (const entry of config.graphHandlers ?? []) {
+    try {
+      const url     = new URL(entry.url, window.location.href).href
+      const handler = await loadHandlerFromBlob(url)
+      registerHandler(handler)
+      loaded.push({
+        handler,
+        label:  entry.label ?? handler.label ?? handler.name,
+        hidden: entry.hidden,
+      })
+    } catch (e) {
+      toast(`Failed to load handler from ${entry.url}: ${e instanceof Error ? e.message : e}`, 'error')
+    }
+  }
+
+  const firstVisible = loaded.find(x => !x.hidden)
+  activeHandlerName  = firstVisible?.handler.name ?? ''
   tabMap = Object.fromEntries(
-    config.graphHandler.filter(h => !h.hidden).map((h, i) => [String(i + 1), h.name])
+    loaded.filter(x => !x.hidden).map((x, i) => [String(i + 1), x.handler.name])
   )
 
-  // Build tab buttons and pane containers from config
-  for (const entry of config.graphHandler) {
-    const isFirst = entry.name === firstVisible?.name
+  for (const { handler, label, hidden } of loaded) {
+    const isFirst = handler.name === firstVisible?.handler.name
 
     const tab = document.createElement('div')
     tab.className   = `tab${isFirst ? ' active' : ''}`
-    tab.dataset.tab = entry.name
-    if (entry.hidden) tab.style.display = 'none'
-    tab.textContent = entry.label
+    tab.dataset.tab = handler.name
+    if (hidden) tab.style.display = 'none'
+    tab.textContent = label
     tabsEl.insertBefore(tab, tabSpacer)
 
     const pane = document.createElement('div')
     pane.className    = `pane${isFirst ? ' active' : ''}`
-    pane.dataset.pane = entry.name
+    pane.dataset.pane = handler.name
     contentEl.appendChild(pane)
-  }
 
-  // Load any handler modules specified by URL (overrides pre-bundled handler of same name)
-  for (const entry of config.graphHandler) {
-    if (!entry.url) continue
-    try {
-      const url = new URL(entry.url, window.location.href).href
-      const h = await loadHandlerFromBlob(url)
-      registerHandler(h)
-    } catch (e) {
-      toast(`Failed to load handler '${entry.name}': ${e instanceof Error ? e.message : e}`, 'error')
-    }
-  }
-
-  // Mount all registered handlers into their pane divs
-  for (const { name } of config.graphHandler) {
-    const h = getHandlers().find(x => x.name === name)
-    if (h) {
-      const paneEl = contentEl.querySelector<HTMLElement>(`[data-pane="${name}"]`)!
-      h.mount(paneEl, handlerCallbacks)
-    }
+    handler.mount(pane, handlerCallbacks)
   }
 
   // Activate the first visible pane's sidebar section
-  if (firstVisible) {
-    const firstHandler = getHandlers().find(x => x.name === firstVisible.name)
-    firstHandler?.onActivate?.(sidebarPaneSection)
-  }
+  firstVisible?.handler.onActivate?.(sidebarPaneSection)
 
   // Auto-load graph sources listed in the config
   for (const source of config.graphSources ?? []) {

@@ -6,7 +6,7 @@
  *
  * Detection rules (checked in order, first match wins for each role):
  *   GraphHandler → named export `handler` or default — has .mount(), .update(), .name
- *   GraphSource  → named export `parser` or `source` or default — has .buildPanel(), .name, .accepts
+ *   GraphSource  → named export `source` or default — has .buildPanel(), .name, .accepts
  *
  * A single module can satisfy both roles (e.g. the Turtle pane is both a
  * handler and a source).
@@ -39,7 +39,6 @@ function isGraphSource(obj: unknown): obj is GraphSource {
 function pick(mod: Record<string, unknown>, result: LoadedModule): void {
   // Named exports by convention
   if (!result.handler && isGraphHandler(mod['handler'])) result.handler = mod['handler'] as GraphHandler
-  if (!result.source  && isGraphSource(mod['parser']))   result.source  = mod['parser']  as GraphSource
   if (!result.source  && isGraphSource(mod['source']))   result.source  = mod['source']  as GraphSource
 
   // Default export — could be either
@@ -70,7 +69,7 @@ export async function loadModuleFromUrl(url: string): Promise<LoadedModule> {
     throw new Error(
       'Module exports no recognisable GraphHandler or GraphSource.\n' +
       'Expected: export const handler = { name, mount, update } or ' +
-      'export const parser = { name, accepts, buildPanel }',
+      'export const source = { name, accepts, buildPanel }',
     )
   }
   return result

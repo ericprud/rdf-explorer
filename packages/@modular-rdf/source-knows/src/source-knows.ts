@@ -212,6 +212,6 @@ class KnowsSource implements GraphSource {
   }
 }
 
-export const parser: GraphSource = new KnowsSource()
+export const source: GraphSource = new KnowsSource()
 
-export default parser
+export default source

@@ -36,7 +36,7 @@ See `src/lib/knows-parser.ts` for the minimal example.  The contract:
 
 ```js
 // my-loader.js  (plain JS, no TypeScript needed)
-export const parser = {
+export const source = {
   name:        'My loader',
   description: 'Drop a .csv file',
   accepts:     ['.csv'],
